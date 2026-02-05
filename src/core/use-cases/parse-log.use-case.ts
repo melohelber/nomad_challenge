@@ -5,6 +5,7 @@ import { Match } from '../entities';
 export interface ParseLogResult {
   matches: Match[];
   events: LogEvent[];
+  invalidLines: { line: string; error: string }[];
 }
 
 @Injectable()

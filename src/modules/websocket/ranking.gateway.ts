@@ -41,7 +41,6 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @WebSocketServer()
   server: Server;
 
-  // Track skip requests per client
   private skipRequests: Map<string, boolean> = new Map();
 
   constructor(
@@ -70,9 +69,17 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @SubscribeMessage('processLog')
   async handleProcessLog(client: Socket, payload: { content: string; delay?: number }) {
     const { content, delay = 500 } = payload;
-    const { events } = this.parseLogUseCase.execute(content);
+    const { events, invalidLines } = this.parseLogUseCase.execute(content);
 
-    // Reset skip flag at start
+    const validationResult = this.validateLogEvents(events, invalidLines);
+
+    if (!validationResult.isValid) {
+      client.emit('processingError', {
+        message: validationResult.error,
+      });
+      return;
+    }
+
     this.skipRequests.set(client.id, false);
 
     let currentMatch: Match | null = null;
@@ -80,8 +87,6 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
     for (const event of events) {
       eventNumber++;
-
-      // Check if skip was requested
       const shouldSkip = this.skipRequests.get(client.id);
 
       switch (event.type) {
@@ -141,13 +146,11 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
           break;
       }
 
-      // Only delay if not skipping
       if (!shouldSkip) {
         await this.sleep(delay);
       }
     }
 
-    // Reset skip flag
     this.skipRequests.set(client.id, false);
 
     client.emit('processingComplete', { totalMatches: events.filter(e => e.type === 'match_end').length });
@@ -165,5 +168,61 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
   private sleep(ms: number): Promise<void> {
     return new Promise((resolve) => setTimeout(resolve, ms));
+  }
+
+  private validateLogEvents(
+    events: { type: string; matchId?: string }[],
+    invalidLines: { line: string; error: string }[]
+  ): { isValid: boolean; error?: string } {
+    if (invalidLines.length > 0) {
+      const errorDetails = invalidLines
+        .slice(0, 3)
+        .map(({ line, error }) => `• ${error}\n  "${line.substring(0, 60)}${line.length > 60 ? '...' : ''}"`)
+        .join('\n\n');
+
+      return {
+        isValid: false,
+        error: `Format errors found:\n\n${errorDetails}`,
+      };
+    }
+
+    if (events.length === 0) {
+      return {
+        isValid: false,
+        error: 'No valid log entries found.\n\nExpected format:\nDD/MM/YYYY HH:MM:SS - New match [ID] has started\nDD/MM/YYYY HH:MM:SS - [Player] killed [Player] using [Weapon]\nDD/MM/YYYY HH:MM:SS - Match [ID] has ended'
+      };
+    }
+
+    const startedMatches = new Set<string>();
+    const endedMatches = new Set<string>();
+
+    for (const event of events) {
+      if (event.type === 'match_start' && event.matchId) {
+        startedMatches.add(event.matchId);
+      } else if (event.type === 'match_end' && event.matchId) {
+        endedMatches.add(event.matchId);
+      }
+    }
+
+    if (startedMatches.size === 0) {
+      return { isValid: false, error: 'No matches found.\n\nMake sure your log contains:\n"DD/MM/YYYY HH:MM:SS - New match [ID] has started"' };
+    }
+
+    const incompleteMatches: string[] = [];
+    for (const matchId of startedMatches) {
+      if (!endedMatches.has(matchId)) {
+        incompleteMatches.push(matchId);
+      }
+    }
+
+    if (incompleteMatches.length > 0) {
+      const matchList = incompleteMatches.join(', ');
+      return {
+        isValid: false,
+        error: `Incomplete matches: ${matchList}\n\nEach match needs both:\n• "New match [ID] has started"\n• "Match [ID] has ended"`
+      };
+    }
+
+    return { isValid: true };
   }
 }

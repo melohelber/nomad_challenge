@@ -53,15 +53,22 @@ export class LogParserService {
     return matches;
   }
 
-  parseLogWithEvents(content: string): { matches: Match[]; events: LogEvent[] } {
+  parseLogWithEvents(content: string): { matches: Match[]; events: LogEvent[]; invalidLines: { line: string; error: string }[] } {
     const lines = content.split('\n').filter((line) => line.trim());
     const matches: Match[] = [];
     const events: LogEvent[] = [];
+    const invalidLines: { line: string; error: string }[] = [];
     let currentMatch: Match | null = null;
 
     for (const line of lines) {
       const event = this.parseLine(line);
-      if (!event) continue;
+      if (!event) {
+        if (this.looksLikeLogLine(line)) {
+          const error = this.getFormatError(line) || 'Invalid format';
+          invalidLines.push({ line: line.trim(), error });
+        }
+        continue;
+      }
 
       events.push(event);
 
@@ -86,7 +93,62 @@ export class LogParserService {
       }
     }
 
-    return { matches, events };
+    return { matches, events, invalidLines };
+  }
+
+  private looksLikeLogLine(line: string): boolean {
+    const trimmed = line.trim();
+    if (!trimmed) return false;
+
+    const hasDatePattern = /\d{1,2}\/\d{1,2}\/\d{2,4}/.test(trimmed);
+    const hasTimePattern = /\d{1,2}:\d{1,2}/.test(trimmed);
+    const hasKeywords = /match|killed|started|ended|world/i.test(trimmed);
+    const hasDash = trimmed.includes(' - ');
+
+    return hasDatePattern || hasTimePattern || hasKeywords || hasDash;
+  }
+
+  getFormatError(line: string): string | null {
+    const trimmed = line.trim();
+    if (!trimmed) return null;
+
+    const fullFormatRegex = /^(\d{2}\/\d{2}\/\d{4}) (\d{2}:\d{2}:\d{2}) - (.+)$/;
+    const match = trimmed.match(fullFormatRegex);
+
+    if (!match) {
+      if (!/^\d{2}\/\d{2}\/\d{4}/.test(trimmed)) {
+        return 'Invalid date format. Expected: DD/MM/YYYY';
+      }
+      if (!/^\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}/.test(trimmed)) {
+        return 'Invalid time format. Expected: HH:MM:SS';
+      }
+      if (!trimmed.includes(' - ')) {
+        return 'Missing separator " - " after timestamp';
+      }
+      return 'Invalid line format';
+    }
+
+    const eventPart = match[3];
+
+    const isMatchStart = /^New match \d+ has started$/.test(eventPart);
+    const isMatchEnd = /^Match \d+ has ended$/.test(eventPart);
+    const isPlayerKill = /^.+ killed .+ using .+$/.test(eventPart);
+    const isWorldKill = /^<WORLD> killed .+ by .+$/.test(eventPart);
+
+    if (!isMatchStart && !isMatchEnd && !isPlayerKill && !isWorldKill) {
+      if (/start/i.test(eventPart)) {
+        return 'Invalid match start. Expected: "New match [ID] has started"';
+      }
+      if (/end/i.test(eventPart)) {
+        return 'Invalid match end. Expected: "Match [ID] has ended"';
+      }
+      if (/kill/i.test(eventPart)) {
+        return 'Invalid kill event. Expected: "[Player] killed [Player] using [Weapon]" or "<WORLD> killed [Player] by [Cause]"';
+      }
+      return 'Unrecognized event type';
+    }
+
+    return null;
   }
 
   private parseLine(line: string): LogEvent | null {

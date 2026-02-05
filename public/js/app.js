@@ -10,6 +10,7 @@ const elements = {
   progressBar: document.getElementById('progressBar'),
   progressFill: document.querySelector('.progress-fill'),
   progressText: document.querySelector('.progress-text'),
+  errorMessage: document.getElementById('errorMessage'),
   liveSection: document.getElementById('liveSection'),
   liveRankingBody: document.getElementById('liveRankingBody'),
   currentMatchId: document.getElementById('currentMatchId'),
@@ -30,8 +31,14 @@ elements.animationDelay.addEventListener('input', (e) => {
 
 elements.clearBtn.addEventListener('click', () => {
   elements.logContent.value = '';
+  elements.errorMessage.classList.add('hidden');
   elements.logContent.focus();
 });
+
+function showError(message) {
+  elements.errorMessage.textContent = message;
+  elements.errorMessage.classList.remove('hidden');
+}
 
 elements.skipBtn.addEventListener('click', () => {
   elements.skipBtn.disabled = true;
@@ -41,9 +48,11 @@ elements.skipBtn.addEventListener('click', () => {
 });
 
 elements.processBtn.addEventListener('click', () => {
+  elements.errorMessage.classList.add('hidden');
+
   const content = elements.logContent.value.trim();
   if (!content) {
-    alert('Please paste log content first');
+    showError('Please paste log content first');
     return;
   }
 
@@ -70,11 +79,10 @@ socket.on('rankingUpdate', (data) => {
   updateProgress(data.eventNumber, data.totalEvents);
   elements.currentMatchId.textContent = `Match ${data.matchId}`;
 
-  // Reset ranking state when a new match starts
   if (data.lastEvent.type === 'match_start') {
     previousRanking = [];
-    elements.liveRankingBody.innerHTML = '';
     elements.lastEvent.classList.add('hidden');
+    return;
   }
 
   updateLastEvent(data.lastEvent);
@@ -83,8 +91,17 @@ socket.on('rankingUpdate', (data) => {
 
 socket.on('matchComplete', (data) => {
   completedMatches.push(data);
-  // Don't clear ranking here - let the next match's first event handle it
-  // This prevents the "flash to empty" issue between matches
+});
+
+socket.on('processingError', (data) => {
+  elements.processBtn.disabled = false;
+  elements.clearBtn.disabled = false;
+  elements.logContent.disabled = false;
+  elements.skipBtn.classList.add('hidden');
+  elements.progressBar.classList.add('hidden');
+  elements.liveSection.classList.add('hidden');
+  elements.progressFill.style.width = '0%';
+  showError(data.message || 'Invalid log format. Please check your input.');
 });
 
 socket.on('processingComplete', (data) => {
@@ -184,10 +201,7 @@ function displayAllMatchResults() {
 
   elements.resultsSection.classList.remove('hidden');
 
-  // Calculate global ranking
   const globalRanking = calculateGlobalRanking();
-
-  // Build HTML with global ranking at top
   let html = createGlobalRankingCard(globalRanking);
 
   completedMatches.forEach((match, index) => {
@@ -223,7 +237,6 @@ function calculateGlobalRanking() {
     });
   });
 
-  // Convert to array and sort by frags
   const ranking = [];
   playerStats.forEach((stats, name) => {
     const kd = stats.deaths > 0 ? stats.frags / stats.deaths : stats.frags;
