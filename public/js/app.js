@@ -2,22 +2,38 @@ const socket = io();
 
 const elements = {
   logFile: document.getElementById('logFile'),
+  fileLabel: document.getElementById('fileLabel'),
+  selectedFile: document.getElementById('selectedFile'),
   processBtn: document.getElementById('processBtn'),
   animationDelay: document.getElementById('animationDelay'),
   delayValue: document.getElementById('delayValue'),
   progressBar: document.getElementById('progressBar'),
   progressFill: document.querySelector('.progress-fill'),
   progressText: document.querySelector('.progress-text'),
-  rankingSection: document.getElementById('rankingSection'),
-  rankingBody: document.getElementById('rankingBody'),
+  liveSection: document.getElementById('liveSection'),
+  liveRankingBody: document.getElementById('liveRankingBody'),
   currentMatchId: document.getElementById('currentMatchId'),
   lastEvent: document.getElementById('lastEvent'),
-  highlightsSection: document.getElementById('highlightsSection'),
-  highlightsList: document.getElementById('highlightsList'),
+  resultsSection: document.getElementById('resultsSection'),
+  matchResultsList: document.getElementById('matchResultsList'),
+  matchCount: document.getElementById('matchCount'),
   matchHistory: document.getElementById('matchHistory'),
 };
 
 let previousRanking = [];
+let completedMatches = [];
+
+// Show selected file name
+elements.logFile.addEventListener('change', (e) => {
+  const file = e.target.files[0];
+  if (file) {
+    elements.selectedFile.textContent = file.name;
+    elements.fileLabel.textContent = 'Change file';
+  } else {
+    elements.selectedFile.textContent = '';
+    elements.fileLabel.textContent = 'Select log file';
+  }
+});
 
 elements.animationDelay.addEventListener('input', (e) => {
   elements.delayValue.textContent = `${e.target.value}ms`;
@@ -37,11 +53,12 @@ elements.processBtn.addEventListener('click', () => {
 
     elements.processBtn.disabled = true;
     elements.progressBar.classList.remove('hidden');
-    elements.rankingSection.classList.remove('hidden');
-    elements.highlightsSection.classList.add('hidden');
-    elements.highlightsList.innerHTML = '';
-    elements.rankingBody.innerHTML = '';
+    elements.liveSection.classList.remove('hidden');
+    elements.resultsSection.classList.add('hidden');
+    elements.matchResultsList.innerHTML = '';
+    elements.liveRankingBody.innerHTML = '';
     previousRanking = [];
+    completedMatches = [];
 
     socket.emit('processLog', { content, delay });
   };
@@ -53,14 +70,14 @@ socket.on('rankingUpdate', (data) => {
   elements.currentMatchId.textContent = `Match ${data.matchId}`;
 
   updateLastEvent(data.lastEvent);
-  animateRanking(data.ranking);
+  animateLiveRanking(data.ranking);
 });
 
 socket.on('matchComplete', (data) => {
-  elements.highlightsSection.classList.remove('hidden');
-  displayHighlights(data.highlights);
+  completedMatches.push(data);
   addToHistory(data.matchId, data.ranking);
   previousRanking = [];
+  elements.liveRankingBody.innerHTML = '';
 });
 
 socket.on('processingComplete', (data) => {
@@ -71,7 +88,11 @@ socket.on('processingComplete', (data) => {
   setTimeout(() => {
     elements.progressBar.classList.add('hidden');
     elements.progressFill.style.width = '0%';
-  }, 2000);
+    elements.liveSection.classList.add('hidden');
+
+    // Show all matches results
+    displayAllMatchResults();
+  }, 1000);
 });
 
 function updateProgress(current, total) {
@@ -101,7 +122,7 @@ function updateLastEvent(event) {
   }
 }
 
-function animateRanking(ranking) {
+function animateLiveRanking(ranking) {
   const previousMap = new Map(previousRanking.map((p, i) => [p.name, i]));
 
   let html = '';
@@ -132,24 +153,88 @@ function animateRanking(ranking) {
     `;
   });
 
-  elements.rankingBody.innerHTML = html;
+  elements.liveRankingBody.innerHTML = html;
   previousRanking = [...ranking];
 }
 
-function displayHighlights(highlights) {
+function displayAllMatchResults() {
+  if (completedMatches.length === 0) return;
+
+  elements.resultsSection.classList.remove('hidden');
+  elements.matchCount.textContent = `${completedMatches.length} match${completedMatches.length > 1 ? 'es' : ''}`;
+
   let html = '';
-  highlights.forEach((h, index) => {
-    html += `
-      <div class="highlight-item" style="animation-delay: ${index * 0.1}s">
-        <span class="highlight-icon">${h.icon}</span>
-        <div class="highlight-content">
-          <div class="highlight-title">${h.title}</div>
-          <div class="highlight-description">${h.description}</div>
-        </div>
-      </div>
+  completedMatches.forEach((match, index) => {
+    html += createMatchResultCard(match, index + 1);
+  });
+
+  elements.matchResultsList.innerHTML = html;
+}
+
+function createMatchResultCard(match, matchNumber) {
+  const ranking = match.ranking.ranking;
+  const highlights = match.highlights;
+
+  let rankingRows = '';
+  ranking.forEach((player) => {
+    rankingRows += `
+      <tr class="${player.isWinner ? 'winner' : ''}">
+        <td class="position">${player.position}</td>
+        <td class="player-name">${player.name}</td>
+        <td class="frags">${player.frags}</td>
+        <td class="deaths">${player.deaths}</td>
+        <td class="kd">${player.kd.toFixed(2)}</td>
+      </tr>
     `;
   });
-  elements.highlightsList.innerHTML = html;
+
+  let highlightsHtml = '';
+  if (highlights && highlights.length > 0) {
+    highlights.forEach((h) => {
+      highlightsHtml += `
+        <div class="highlight-item-small">
+          <span class="highlight-icon">${h.icon}</span>
+          <span class="highlight-text"><strong>${h.title}:</strong> ${h.description}</span>
+        </div>
+      `;
+    });
+  } else {
+    highlightsHtml = '<p class="no-highlights">No highlights</p>';
+  }
+
+  return `
+    <div class="match-result-card">
+      <div class="match-card-header">
+        <h3>Match ${match.matchId}</h3>
+        <span class="match-number">#${matchNumber}</span>
+      </div>
+
+      <div class="match-card-content">
+        <div class="ranking-section-small">
+          <h4>Ranking</h4>
+          <table class="ranking-table-small">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Player</th>
+                <th>Frags</th>
+                <th>Deaths</th>
+                <th>K/D</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rankingRows}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="highlights-section-small">
+          <h4>Highlights</h4>
+          ${highlightsHtml}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 function addToHistory(matchId, ranking) {
@@ -171,25 +256,24 @@ async function loadMatch(matchId) {
     const data = await response.json();
 
     if (data.match) {
-      displaySavedMatch(data.match);
+      displaySingleMatch(data.match);
     }
   } catch (error) {
     console.error('Error loading match:', error);
   }
 }
 
-function displaySavedMatch(match) {
-  elements.rankingSection.classList.remove('hidden');
-  elements.highlightsSection.classList.remove('hidden');
-  elements.currentMatchId.textContent = `Match ${match.id}`;
-  elements.lastEvent.classList.add('hidden');
+function displaySingleMatch(match) {
+  elements.liveSection.classList.add('hidden');
+  elements.resultsSection.classList.remove('hidden');
+  elements.matchCount.textContent = '1 match';
 
   const sortedPlayers = [...match.players].sort((a, b) => b.frags - a.frags);
 
-  let rankingHtml = '';
+  let rankingRows = '';
   sortedPlayers.forEach((player, index) => {
     const kd = player.deaths > 0 ? (player.frags / player.deaths).toFixed(2) : player.frags.toFixed(2);
-    rankingHtml += `
+    rankingRows += `
       <tr class="${index === 0 ? 'winner' : ''}">
         <td class="position">${index + 1}</td>
         <td class="player-name">${player.playerName}</td>
@@ -199,18 +283,14 @@ function displaySavedMatch(match) {
       </tr>
     `;
   });
-  elements.rankingBody.innerHTML = rankingHtml;
 
   let highlightsHtml = '';
 
   if (match.winnerWeapon) {
     highlightsHtml += `
-      <div class="highlight-item">
+      <div class="highlight-item-small">
         <span class="highlight-icon">🔫</span>
-        <div class="highlight-content">
-          <div class="highlight-title">Winner's Favorite Weapon</div>
-          <div class="highlight-description">${match.winnerWeapon}</div>
-        </div>
+        <span class="highlight-text"><strong>Winner's Favorite Weapon:</strong> ${match.winnerWeapon}</span>
       </div>
     `;
   }
@@ -218,42 +298,68 @@ function displaySavedMatch(match) {
   sortedPlayers.forEach((player) => {
     if (player.maxStreak > 1) {
       highlightsHtml += `
-        <div class="highlight-item">
+        <div class="highlight-item-small">
           <span class="highlight-icon">🔥</span>
-          <div class="highlight-content">
-            <div class="highlight-title">Best Streak</div>
-            <div class="highlight-description">${player.playerName} - ${player.maxStreak} kills without dying</div>
-          </div>
+          <span class="highlight-text"><strong>Best Streak:</strong> ${player.playerName} - ${player.maxStreak} kills without dying</span>
         </div>
       `;
     }
 
     if (player.hasFlawlessAward) {
       highlightsHtml += `
-        <div class="highlight-item">
+        <div class="highlight-item-small">
           <span class="highlight-icon">🏅</span>
-          <div class="highlight-content">
-            <div class="highlight-title">FLAWLESS Award</div>
-            <div class="highlight-description">${player.playerName} (won without dying)</div>
-          </div>
+          <span class="highlight-text"><strong>FLAWLESS Award:</strong> ${player.playerName} (won without dying)</span>
         </div>
       `;
     }
 
     if (player.hasFrenzyAward) {
       highlightsHtml += `
-        <div class="highlight-item">
+        <div class="highlight-item-small">
           <span class="highlight-icon">⚡</span>
-          <div class="highlight-content">
-            <div class="highlight-title">FRENZY Award</div>
-            <div class="highlight-description">${player.playerName} (5 kills in 1 minute)</div>
-          </div>
+          <span class="highlight-text"><strong>FRENZY Award:</strong> ${player.playerName} (5 kills in 1 minute)</span>
         </div>
       `;
     }
   });
 
-  elements.highlightsList.innerHTML = highlightsHtml || '<p style="color: var(--text-secondary)">No highlights in this match</p>';
+  if (!highlightsHtml) {
+    highlightsHtml = '<p class="no-highlights">No highlights</p>';
+  }
+
+  elements.matchResultsList.innerHTML = `
+    <div class="match-result-card">
+      <div class="match-card-header">
+        <h3>Match ${match.id}</h3>
+      </div>
+
+      <div class="match-card-content">
+        <div class="ranking-section-small">
+          <h4>Ranking</h4>
+          <table class="ranking-table-small">
+            <thead>
+              <tr>
+                <th>#</th>
+                <th>Player</th>
+                <th>Frags</th>
+                <th>Deaths</th>
+                <th>K/D</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${rankingRows}
+            </tbody>
+          </table>
+        </div>
+
+        <div class="highlights-section-small">
+          <h4>Highlights</h4>
+          ${highlightsHtml}
+        </div>
+      </div>
+    </div>
+  `;
 }
 
 document.querySelectorAll('.match-item').forEach((item) => {

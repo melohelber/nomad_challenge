@@ -28,7 +28,8 @@
       <section class="upload-section">
         <div class="upload-box">
           <input type="file" id="logFile" accept=".txt,.log" />
-          <label for="logFile">Select log file</label>
+          <label for="logFile" id="fileLabel">Select log file</label>
+          <span id="selectedFile" class="selected-file"></span>
           <div class="upload-controls">
             <label for="animationDelay">Speed:</label>
             <input type="range" id="animationDelay" min="100" max="1000" value="400" />
@@ -42,14 +43,13 @@
         </div>
       </section>
 
-      <section class="ranking-section hidden" id="rankingSection">
+      <!-- Live animation section (shown during processing) -->
+      <section class="live-section hidden" id="liveSection">
         <div class="section-header">
-          <h2>RANKING</h2>
+          <h2>LIVE</h2>
           <span id="currentMatchId" class="match-badge"></span>
         </div>
-
         <div id="lastEvent" class="last-event hidden"></div>
-
         <table class="ranking-table">
           <thead>
             <tr>
@@ -60,16 +60,18 @@
               <th>K/D</th>
             </tr>
           </thead>
-          <tbody id="rankingBody">
+          <tbody id="liveRankingBody">
           </tbody>
         </table>
       </section>
 
-      <section class="highlights-section hidden" id="highlightsSection">
+      <!-- All matches results (shown after processing) -->
+      <section class="results-section hidden" id="resultsSection">
         <div class="section-header">
-          <h2>HIGHLIGHTS</h2>
+          <h2>MATCH RESULTS</h2>
+          <span id="matchCount" class="match-badge"></span>
         </div>
-        <div id="highlightsList" class="highlights-list">
+        <div id="matchResultsList" class="match-results-list">
         </div>
       </section>
     </main>
