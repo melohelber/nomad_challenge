@@ -244,6 +244,22 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
       };
     }
 
+    // Check for orphan match ends (ended without being started)
+    const orphanEnds: string[] = [];
+    for (const matchId of endedMatches) {
+      if (!startedMatches.has(matchId)) {
+        orphanEnds.push(matchId);
+      }
+    }
+
+    if (orphanEnds.length > 0) {
+      const matchList = orphanEnds.join(', ');
+      return {
+        isValid: false,
+        error: `Match end without start: ${matchList}\n\nEach match needs both:\n• "New match [ID] has started"\n• "Match [ID] has ended"`
+      };
+    }
+
     // Validate team names for matches with teams
     const teamValidation = this.validateTeamNames(events, startedMatches);
     if (!teamValidation.isValid) {
