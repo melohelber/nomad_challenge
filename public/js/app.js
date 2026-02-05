@@ -184,12 +184,126 @@ function displayAllMatchResults() {
   elements.resultsSection.classList.remove('hidden');
   elements.matchCount.textContent = `${completedMatches.length} match${completedMatches.length > 1 ? 'es' : ''}`;
 
-  let html = '';
+  // Calculate summary
+  const summary = calculateSummary();
+
+  // Build HTML with summary at top
+  let html = createSummaryCard(summary);
+
   completedMatches.forEach((match, index) => {
     html += createMatchResultCard(match, index + 1);
   });
 
   elements.matchResultsList.innerHTML = html;
+}
+
+function calculateSummary() {
+  const playerStats = new Map();
+  let totalKills = 0;
+  let totalDeaths = 0;
+  const winners = [];
+
+  completedMatches.forEach((match) => {
+    const ranking = match.ranking.ranking;
+
+    // Track winner
+    if (ranking.length > 0) {
+      winners.push(ranking[0].name);
+    }
+
+    // Aggregate player stats
+    ranking.forEach((player) => {
+      totalKills += player.frags;
+      totalDeaths += player.deaths;
+
+      if (!playerStats.has(player.name)) {
+        playerStats.set(player.name, { frags: 0, deaths: 0, matches: 0, wins: 0 });
+      }
+
+      const stats = playerStats.get(player.name);
+      stats.frags += player.frags;
+      stats.deaths += player.deaths;
+      stats.matches += 1;
+      if (player.isWinner) {
+        stats.wins += 1;
+      }
+    });
+  });
+
+  // Find top player by frags
+  let topPlayer = null;
+  let maxFrags = -1;
+  playerStats.forEach((stats, name) => {
+    if (stats.frags > maxFrags) {
+      maxFrags = stats.frags;
+      topPlayer = { name, ...stats };
+    }
+  });
+
+  // Find most wins
+  let mostWinsPlayer = null;
+  let maxWins = 0;
+  playerStats.forEach((stats, name) => {
+    if (stats.wins > maxWins) {
+      maxWins = stats.wins;
+      mostWinsPlayer = { name, wins: stats.wins };
+    }
+  });
+
+  return {
+    totalMatches: completedMatches.length,
+    totalKills,
+    totalDeaths,
+    totalPlayers: playerStats.size,
+    topPlayer,
+    mostWinsPlayer,
+  };
+}
+
+function createSummaryCard(summary) {
+  const topPlayerKD = summary.topPlayer && summary.topPlayer.deaths > 0
+    ? (summary.topPlayer.frags / summary.topPlayer.deaths).toFixed(2)
+    : summary.topPlayer?.frags.toFixed(2) || '0';
+
+  return `
+    <div class="summary-card">
+      <h3>Summary</h3>
+      <div class="summary-stats">
+        <div class="stat-item">
+          <span class="stat-value">${summary.totalMatches}</span>
+          <span class="stat-label">Matches</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">${summary.totalKills}</span>
+          <span class="stat-label">Total Kills</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">${summary.totalPlayers}</span>
+          <span class="stat-label">Players</span>
+        </div>
+      </div>
+      ${summary.topPlayer ? `
+        <div class="summary-highlights">
+          <div class="summary-highlight">
+            <span class="highlight-icon">👑</span>
+            <span class="highlight-text">
+              <strong>Top Player:</strong> ${summary.topPlayer.name}
+              (${summary.topPlayer.frags} kills, K/D: ${topPlayerKD})
+            </span>
+          </div>
+          ${summary.mostWinsPlayer && summary.mostWinsPlayer.wins > 0 ? `
+            <div class="summary-highlight">
+              <span class="highlight-icon">🏆</span>
+              <span class="highlight-text">
+                <strong>Most Wins:</strong> ${summary.mostWinsPlayer.name}
+                (${summary.mostWinsPlayer.wins} win${summary.mostWinsPlayer.wins > 1 ? 's' : ''})
+              </span>
+            </div>
+          ` : ''}
+        </div>
+      ` : ''}
+    </div>
+  `;
 }
 
 function createMatchResultCard(match, matchNumber) {
