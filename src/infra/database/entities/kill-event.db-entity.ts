@@ -15,7 +15,7 @@ export class KillEventDbEntity {
   @Column()
   matchId: string;
 
-  @Column()
+  @Column({ type: 'datetime' })
   timestamp: Date;
 
   @Column()

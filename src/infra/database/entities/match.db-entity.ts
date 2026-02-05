@@ -13,16 +13,16 @@ export class MatchDbEntity {
   @PrimaryColumn()
   id: string;
 
-  @Column()
+  @Column({ type: 'datetime' })
   startedAt: Date;
 
-  @Column({ nullable: true })
+  @Column({ type: 'datetime', nullable: true })
   endedAt: Date | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   winnerName: string | null;
 
-  @Column({ nullable: true })
+  @Column({ type: 'text', nullable: true })
   winnerWeapon: string | null;
 
   @CreateDateColumn()
