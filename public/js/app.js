@@ -16,7 +16,6 @@ const elements = {
   lastEvent: document.getElementById('lastEvent'),
   resultsSection: document.getElementById('resultsSection'),
   matchResultsList: document.getElementById('matchResultsList'),
-  matchCount: document.getElementById('matchCount'),
   matchHistory: document.getElementById('matchHistory'),
 };
 
@@ -53,6 +52,7 @@ elements.processBtn.addEventListener('click', () => {
   elements.processBtn.disabled = true;
   elements.clearBtn.disabled = true;
   elements.logContent.disabled = true;
+  elements.skipBtn.classList.remove('hidden');
   elements.skipBtn.disabled = false;
   elements.skipBtn.textContent = 'Skip to Results';
   elements.progressBar.classList.remove('hidden');
@@ -91,6 +91,7 @@ socket.on('processingComplete', (data) => {
   elements.processBtn.disabled = false;
   elements.clearBtn.disabled = false;
   elements.logContent.disabled = false;
+  elements.skipBtn.classList.add('hidden');
   elements.skipBtn.disabled = true;
   elements.skipBtn.textContent = 'Skip to Results';
   elements.progressFill.style.width = '100%';
@@ -182,13 +183,12 @@ function displayAllMatchResults() {
   if (completedMatches.length === 0) return;
 
   elements.resultsSection.classList.remove('hidden');
-  elements.matchCount.textContent = `${completedMatches.length} match${completedMatches.length > 1 ? 'es' : ''}`;
 
-  // Calculate summary
-  const summary = calculateSummary();
+  // Calculate global ranking
+  const globalRanking = calculateGlobalRanking();
 
-  // Build HTML with summary at top
-  let html = createSummaryCard(summary);
+  // Build HTML with global ranking at top
+  let html = createGlobalRankingCard(globalRanking);
 
   completedMatches.forEach((match, index) => {
     html += createMatchResultCard(match, index + 1);
@@ -197,25 +197,13 @@ function displayAllMatchResults() {
   elements.matchResultsList.innerHTML = html;
 }
 
-function calculateSummary() {
+function calculateGlobalRanking() {
   const playerStats = new Map();
-  let totalKills = 0;
-  let totalDeaths = 0;
-  const winners = [];
 
   completedMatches.forEach((match) => {
     const ranking = match.ranking.ranking;
 
-    // Track winner
-    if (ranking.length > 0) {
-      winners.push(ranking[0].name);
-    }
-
-    // Aggregate player stats
     ranking.forEach((player) => {
-      totalKills += player.frags;
-      totalDeaths += player.deaths;
-
       if (!playerStats.has(player.name)) {
         playerStats.set(player.name, { frags: 0, deaths: 0, matches: 0, wins: 0 });
       }
@@ -230,78 +218,65 @@ function calculateSummary() {
     });
   });
 
-  // Find top player by frags
-  let topPlayer = null;
-  let maxFrags = -1;
+  // Convert to array and sort by frags
+  const ranking = [];
   playerStats.forEach((stats, name) => {
-    if (stats.frags > maxFrags) {
-      maxFrags = stats.frags;
-      topPlayer = { name, ...stats };
-    }
+    const kd = stats.deaths > 0 ? stats.frags / stats.deaths : stats.frags;
+    ranking.push({
+      name,
+      frags: stats.frags,
+      deaths: stats.deaths,
+      kd,
+      matches: stats.matches,
+      wins: stats.wins,
+    });
   });
 
-  // Find most wins
-  let mostWinsPlayer = null;
-  let maxWins = 0;
-  playerStats.forEach((stats, name) => {
-    if (stats.wins > maxWins) {
-      maxWins = stats.wins;
-      mostWinsPlayer = { name, wins: stats.wins };
-    }
-  });
+  ranking.sort((a, b) => b.frags - a.frags);
 
   return {
     totalMatches: completedMatches.length,
-    totalKills,
-    totalDeaths,
-    totalPlayers: playerStats.size,
-    topPlayer,
-    mostWinsPlayer,
+    ranking,
   };
 }
 
-function createSummaryCard(summary) {
-  const topPlayerKD = summary.topPlayer && summary.topPlayer.deaths > 0
-    ? (summary.topPlayer.frags / summary.topPlayer.deaths).toFixed(2)
-    : summary.topPlayer?.frags.toFixed(2) || '0';
+function createGlobalRankingCard(data) {
+  let rankingRows = '';
+  data.ranking.forEach((player, index) => {
+    const isWinner = index === 0;
+    rankingRows += `
+      <tr class="${isWinner ? 'winner' : ''}">
+        <td class="position">${index + 1}</td>
+        <td class="player-name">${player.name}</td>
+        <td class="frags">${player.frags}</td>
+        <td class="deaths">${player.deaths}</td>
+        <td class="kd">${player.kd.toFixed(2)}</td>
+        <td class="wins">${player.wins}</td>
+      </tr>
+    `;
+  });
 
   return `
-    <div class="summary-card">
-      <h3>Summary</h3>
-      <div class="summary-stats">
-        <div class="stat-item">
-          <span class="stat-value">${summary.totalMatches}</span>
-          <span class="stat-label">Matches</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">${summary.totalKills}</span>
-          <span class="stat-label">Total Kills</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">${summary.totalPlayers}</span>
-          <span class="stat-label">Players</span>
-        </div>
+    <div class="global-ranking-card">
+      <div class="card-header">
+        <h2>Global Ranking</h2>
+        <span class="match-badge">${data.totalMatches} match${data.totalMatches > 1 ? 'es' : ''}</span>
       </div>
-      ${summary.topPlayer ? `
-        <div class="summary-highlights">
-          <div class="summary-highlight">
-            <span class="highlight-icon">👑</span>
-            <span class="highlight-text">
-              <strong>Top Player:</strong> ${summary.topPlayer.name}
-              (${summary.topPlayer.frags} kills, K/D: ${topPlayerKD})
-            </span>
-          </div>
-          ${summary.mostWinsPlayer && summary.mostWinsPlayer.wins > 0 ? `
-            <div class="summary-highlight">
-              <span class="highlight-icon">🏆</span>
-              <span class="highlight-text">
-                <strong>Most Wins:</strong> ${summary.mostWinsPlayer.name}
-                (${summary.mostWinsPlayer.wins} win${summary.mostWinsPlayer.wins > 1 ? 's' : ''})
-              </span>
-            </div>
-          ` : ''}
-        </div>
-      ` : ''}
+      <table class="ranking-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Frags</th>
+            <th>Deaths</th>
+            <th>K/D</th>
+            <th>Wins</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rankingRows}
+        </tbody>
+      </table>
     </div>
   `;
 }
