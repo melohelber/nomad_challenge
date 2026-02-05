@@ -464,6 +464,37 @@ body {
   border: 2px solid var(--accent);
 }
 
+.live-controls {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.btn-skip {
+  padding: 8px 16px;
+  background: var(--gold);
+  color: var(--bg-primary);
+  border: none;
+  border-radius: 6px;
+  font-size: 0.85rem;
+  font-weight: bold;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
+
+.btn-skip:hover {
+  background: #ffed4a;
+  transform: scale(1.05);
+}
+
+.btn-skip:disabled {
+  background: var(--text-secondary);
+  cursor: not-allowed;
+  transform: none;
+}
+
 /* Results Section */
 .results-section {
   margin-bottom: 20px;

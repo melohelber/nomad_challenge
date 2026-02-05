@@ -10,7 +10,7 @@ import { ParseLogUseCase } from '../../core/use-cases/parse-log.use-case';
 import { CalculateRankingUseCase } from '../../core/use-cases/calculate-ranking.use-case';
 import { GetHighlightsUseCase } from '../../core/use-cases/get-highlights.use-case';
 import { MatchRepository } from '../../infra/database/repositories/match.repository';
-import { Match, Player } from '../../core/entities';
+import { Match } from '../../core/entities';
 
 interface RankingSnapshot {
   matchId: string;
@@ -41,6 +41,9 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
   @WebSocketServer()
   server: Server;
 
+  // Track skip requests per client
+  private skipRequests: Map<string, boolean> = new Map();
+
   constructor(
     private readonly parseLogUseCase: ParseLogUseCase,
     private readonly calculateRankingUseCase: CalculateRankingUseCase,
@@ -50,10 +53,18 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
   handleConnection(client: Socket) {
     console.log(`Client connected: ${client.id}`);
+    this.skipRequests.set(client.id, false);
   }
 
   handleDisconnect(client: Socket) {
     console.log(`Client disconnected: ${client.id}`);
+    this.skipRequests.delete(client.id);
+  }
+
+  @SubscribeMessage('skipToResults')
+  handleSkipToResults(client: Socket) {
+    console.log(`Skip requested by: ${client.id}`);
+    this.skipRequests.set(client.id, true);
   }
 
   @SubscribeMessage('processLog')
@@ -61,42 +72,52 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
     const { content, delay = 500 } = payload;
     const { events } = this.parseLogUseCase.execute(content);
 
+    // Reset skip flag at start
+    this.skipRequests.set(client.id, false);
+
     let currentMatch: Match | null = null;
     let eventNumber = 0;
 
     for (const event of events) {
       eventNumber++;
 
+      // Check if skip was requested
+      const shouldSkip = this.skipRequests.get(client.id);
+
       switch (event.type) {
         case 'match_start':
           currentMatch = new Match(event.matchId, event.timestamp);
-          client.emit('rankingUpdate', {
-            matchId: event.matchId,
-            eventNumber,
-            totalEvents: events.length,
-            ranking: [],
-            lastEvent: { type: 'match_start' },
-          } as RankingSnapshot);
+          if (!shouldSkip) {
+            client.emit('rankingUpdate', {
+              matchId: event.matchId,
+              eventNumber,
+              totalEvents: events.length,
+              ranking: [],
+              lastEvent: { type: 'match_start' },
+            } as RankingSnapshot);
+          }
           break;
 
         case 'kill':
           if (currentMatch) {
             currentMatch.addKillEvent(event.event);
-            const ranking = this.buildRankingSnapshot(currentMatch);
 
-            client.emit('rankingUpdate', {
-              matchId: currentMatch.id,
-              eventNumber,
-              totalEvents: events.length,
-              ranking,
-              lastEvent: {
-                type: 'kill',
-                killer: event.event.killerName,
-                victim: event.event.victimName,
-                weapon: event.event.weapon,
-                isWorldKill: event.event.isWorldKill,
-              },
-            } as RankingSnapshot);
+            if (!shouldSkip) {
+              const ranking = this.buildRankingSnapshot(currentMatch);
+              client.emit('rankingUpdate', {
+                matchId: currentMatch.id,
+                eventNumber,
+                totalEvents: events.length,
+                ranking,
+                lastEvent: {
+                  type: 'kill',
+                  killer: event.event.killerName,
+                  victim: event.event.victimName,
+                  weapon: event.event.weapon,
+                  isWorldKill: event.event.isWorldKill,
+                },
+              } as RankingSnapshot);
+            }
           }
           break;
 
@@ -120,8 +141,14 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
           break;
       }
 
-      await this.sleep(delay);
+      // Only delay if not skipping
+      if (!shouldSkip) {
+        await this.sleep(delay);
+      }
     }
+
+    // Reset skip flag
+    this.skipRequests.set(client.id, false);
 
     client.emit('processingComplete', { totalMatches: events.filter(e => e.type === 'match_end').length });
   }

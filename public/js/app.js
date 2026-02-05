@@ -4,6 +4,7 @@ const elements = {
   logContent: document.getElementById('logContent'),
   processBtn: document.getElementById('processBtn'),
   clearBtn: document.getElementById('clearBtn'),
+  skipBtn: document.getElementById('skipBtn'),
   animationDelay: document.getElementById('animationDelay'),
   delayValue: document.getElementById('delayValue'),
   progressBar: document.getElementById('progressBar'),
@@ -33,6 +34,13 @@ elements.clearBtn.addEventListener('click', () => {
   elements.logContent.focus();
 });
 
+elements.skipBtn.addEventListener('click', () => {
+  elements.skipBtn.disabled = true;
+  elements.skipBtn.textContent = 'Skipping...';
+  elements.progressText.textContent = 'Skipping...';
+  socket.emit('skipToResults');
+});
+
 elements.processBtn.addEventListener('click', () => {
   const content = elements.logContent.value.trim();
   if (!content) {
@@ -45,6 +53,8 @@ elements.processBtn.addEventListener('click', () => {
   elements.processBtn.disabled = true;
   elements.clearBtn.disabled = true;
   elements.logContent.disabled = true;
+  elements.skipBtn.disabled = false;
+  elements.skipBtn.textContent = 'Skip to Results';
   elements.progressBar.classList.remove('hidden');
   elements.liveSection.classList.remove('hidden');
   elements.resultsSection.classList.add('hidden');
@@ -60,20 +70,29 @@ socket.on('rankingUpdate', (data) => {
   updateProgress(data.eventNumber, data.totalEvents);
   elements.currentMatchId.textContent = `Match ${data.matchId}`;
 
+  // Reset ranking state when a new match starts
+  if (data.lastEvent.type === 'match_start') {
+    previousRanking = [];
+    elements.liveRankingBody.innerHTML = '';
+    elements.lastEvent.classList.add('hidden');
+  }
+
   updateLastEvent(data.lastEvent);
   animateLiveRanking(data.ranking);
 });
 
 socket.on('matchComplete', (data) => {
   completedMatches.push(data);
-  previousRanking = [];
-  elements.liveRankingBody.innerHTML = '';
+  // Don't clear ranking here - let the next match's first event handle it
+  // This prevents the "flash to empty" issue between matches
 });
 
 socket.on('processingComplete', (data) => {
   elements.processBtn.disabled = false;
   elements.clearBtn.disabled = false;
   elements.logContent.disabled = false;
+  elements.skipBtn.disabled = true;
+  elements.skipBtn.textContent = 'Skip to Results';
   elements.progressFill.style.width = '100%';
   elements.progressText.textContent = 'Done!';
 
