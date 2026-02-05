@@ -21,16 +21,23 @@
       </header>
 
       <section class="upload-section">
-        <div class="upload-box">
-          <input type="file" id="logFile" accept=".txt,.log" />
-          <label for="logFile" id="fileLabel">Select log file</label>
-          <span id="selectedFile" class="selected-file"></span>
-          <div class="upload-controls">
-            <label for="animationDelay">Speed:</label>
-            <input type="range" id="animationDelay" min="100" max="1000" value="400" />
-            <span id="delayValue">400ms</span>
+        <div class="input-box">
+          <label for="logContent" class="input-label">Paste your log content below:</label>
+          <textarea id="logContent" class="log-textarea" placeholder="23/04/2019 15:34:22 - New match 11348965 has started
+23/04/2019 15:36:04 - Roman killed Nick using M16
+23/04/2019 15:36:33 - <WORLD> killed Nick by DROWN
+23/04/2019 15:39:22 - Match 11348965 has ended"></textarea>
+          <div class="input-controls">
+            <div class="speed-control">
+              <label for="animationDelay">Speed:</label>
+              <input type="range" id="animationDelay" min="50" max="1000" value="300" />
+              <span id="delayValue">300ms</span>
+            </div>
+            <div class="action-buttons">
+              <button id="clearBtn" class="btn-clear">Clear</button>
+              <button id="processBtn" class="btn-process">Process</button>
+            </div>
           </div>
-          <button id="processBtn" class="btn-process">Process</button>
         </div>
         <div id="progressBar" class="progress-bar hidden">
           <div class="progress-fill"></div>

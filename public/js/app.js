@@ -1,10 +1,9 @@
 const socket = io();
 
 const elements = {
-  logFile: document.getElementById('logFile'),
-  fileLabel: document.getElementById('fileLabel'),
-  selectedFile: document.getElementById('selectedFile'),
+  logContent: document.getElementById('logContent'),
   processBtn: document.getElementById('processBtn'),
+  clearBtn: document.getElementById('clearBtn'),
   animationDelay: document.getElementById('animationDelay'),
   delayValue: document.getElementById('delayValue'),
   progressBar: document.getElementById('progressBar'),
@@ -22,51 +21,39 @@ const elements = {
 
 let previousRanking = [];
 let completedMatches = [];
-let currentFileName = '';
-let logEntries = []; // Store all log file entries with their matches
-
-// Show selected file name
-elements.logFile.addEventListener('change', (e) => {
-  const file = e.target.files[0];
-  if (file) {
-    currentFileName = file.name;
-    elements.selectedFile.textContent = file.name;
-    elements.fileLabel.textContent = 'Change file';
-  } else {
-    currentFileName = '';
-    elements.selectedFile.textContent = '';
-    elements.fileLabel.textContent = 'Select log file';
-  }
-});
+let logEntries = [];
+let entryCounter = 1;
 
 elements.animationDelay.addEventListener('input', (e) => {
   elements.delayValue.textContent = `${e.target.value}ms`;
 });
 
+elements.clearBtn.addEventListener('click', () => {
+  elements.logContent.value = '';
+  elements.logContent.focus();
+});
+
 elements.processBtn.addEventListener('click', () => {
-  const file = elements.logFile.files[0];
-  if (!file) {
-    alert('Please select a log file');
+  const content = elements.logContent.value.trim();
+  if (!content) {
+    alert('Please paste log content first');
     return;
   }
 
-  const reader = new FileReader();
-  reader.onload = (e) => {
-    const content = e.target.result;
-    const delay = parseInt(elements.animationDelay.value);
+  const delay = parseInt(elements.animationDelay.value);
 
-    elements.processBtn.disabled = true;
-    elements.progressBar.classList.remove('hidden');
-    elements.liveSection.classList.remove('hidden');
-    elements.resultsSection.classList.add('hidden');
-    elements.matchResultsList.innerHTML = '';
-    elements.liveRankingBody.innerHTML = '';
-    previousRanking = [];
-    completedMatches = [];
+  elements.processBtn.disabled = true;
+  elements.clearBtn.disabled = true;
+  elements.logContent.disabled = true;
+  elements.progressBar.classList.remove('hidden');
+  elements.liveSection.classList.remove('hidden');
+  elements.resultsSection.classList.add('hidden');
+  elements.matchResultsList.innerHTML = '';
+  elements.liveRankingBody.innerHTML = '';
+  previousRanking = [];
+  completedMatches = [];
 
-    socket.emit('processLog', { content, delay });
-  };
-  reader.readAsText(file);
+  socket.emit('processLog', { content, delay });
 });
 
 socket.on('rankingUpdate', (data) => {
@@ -79,13 +66,14 @@ socket.on('rankingUpdate', (data) => {
 
 socket.on('matchComplete', (data) => {
   completedMatches.push(data);
-  // Don't add individual matches to history - we'll add the whole log entry when processing completes
   previousRanking = [];
   elements.liveRankingBody.innerHTML = '';
 });
 
 socket.on('processingComplete', (data) => {
   elements.processBtn.disabled = false;
+  elements.clearBtn.disabled = false;
+  elements.logContent.disabled = false;
   elements.progressFill.style.width = '100%';
   elements.progressText.textContent = 'Done!';
 
@@ -94,11 +82,10 @@ socket.on('processingComplete', (data) => {
     elements.progressFill.style.width = '0%';
     elements.liveSection.classList.add('hidden');
 
-    // Save this log entry to history
     if (completedMatches.length > 0) {
       const entry = {
         id: Date.now(),
-        fileName: currentFileName,
+        name: `Log Entry #${entryCounter++}`,
         matches: [...completedMatches],
         timestamp: new Date().toLocaleString(),
       };
@@ -106,7 +93,6 @@ socket.on('processingComplete', (data) => {
       addLogEntryToHistory(entry);
     }
 
-    // Show all matches results
     displayAllMatchResults();
   }, 1000);
 });
@@ -259,7 +245,7 @@ function addLogEntryToHistory(entry) {
   entryItem.className = 'match-item';
   entryItem.dataset.entryId = entry.id;
   entryItem.innerHTML = `
-    <span class="match-id">${entry.fileName}</span>
+    <span class="match-id">${entry.name}</span>
     <span class="match-winner">${matchCount} match${matchCount > 1 ? 'es' : ''}</span>
   `;
   entryItem.addEventListener('click', () => loadLogEntry(entry.id));
@@ -273,6 +259,3 @@ function loadLogEntry(entryId) {
     displayAllMatchResults();
   }
 }
-
-// Note: loadLogEntry is used for history items from current session
-// For server-rendered history items (from database), we'll need a separate handler
