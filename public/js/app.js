@@ -26,7 +26,7 @@ elements.animationDelay.addEventListener('input', (e) => {
 elements.processBtn.addEventListener('click', () => {
   const file = elements.logFile.files[0];
   if (!file) {
-    alert('Por favor, selecione um arquivo de log');
+    alert('Please select a log file');
     return;
   }
 
@@ -66,7 +66,7 @@ socket.on('matchComplete', (data) => {
 socket.on('processingComplete', (data) => {
   elements.processBtn.disabled = false;
   elements.progressFill.style.width = '100%';
-  elements.progressText.textContent = 'Concluido!';
+  elements.progressText.textContent = 'Done!';
 
   setTimeout(() => {
     elements.progressBar.classList.add('hidden');
@@ -91,12 +91,12 @@ function updateLastEvent(event) {
   if (event.isWorldKill) {
     elements.lastEvent.classList.add('world-kill');
     elements.lastEvent.innerHTML = `
-      <strong>&lt;WORLD&gt;</strong> matou <strong>${event.victim}</strong> por ${event.weapon}
+      <strong>WORLD</strong> killed <strong>${event.victim}</strong>
     `;
   } else {
     elements.lastEvent.classList.remove('world-kill');
     elements.lastEvent.innerHTML = `
-      <strong>${event.killer}</strong> matou <strong>${event.victim}</strong> usando <strong>${event.weapon}</strong>
+      <strong>${event.killer}</strong> killed <strong>${event.victim}</strong> using <strong>${event.weapon}</strong>
     `;
   }
 }
@@ -208,7 +208,7 @@ function displaySavedMatch(match) {
       <div class="highlight-item">
         <span class="highlight-icon">🔫</span>
         <div class="highlight-content">
-          <div class="highlight-title">Arma favorita do vencedor</div>
+          <div class="highlight-title">Winner's Favorite Weapon</div>
           <div class="highlight-description">${match.winnerWeapon}</div>
         </div>
       </div>
@@ -221,8 +221,8 @@ function displaySavedMatch(match) {
         <div class="highlight-item">
           <span class="highlight-icon">🔥</span>
           <div class="highlight-content">
-            <div class="highlight-title">Maior streak</div>
-            <div class="highlight-description">${player.playerName} - ${player.maxStreak} kills sem morrer</div>
+            <div class="highlight-title">Best Streak</div>
+            <div class="highlight-description">${player.playerName} - ${player.maxStreak} kills without dying</div>
           </div>
         </div>
       `;
@@ -233,8 +233,8 @@ function displaySavedMatch(match) {
         <div class="highlight-item">
           <span class="highlight-icon">🏅</span>
           <div class="highlight-content">
-            <div class="highlight-title">Award FLAWLESS</div>
-            <div class="highlight-description">${player.playerName} (venceu sem morrer)</div>
+            <div class="highlight-title">FLAWLESS Award</div>
+            <div class="highlight-description">${player.playerName} (won without dying)</div>
           </div>
         </div>
       `;
@@ -245,15 +245,15 @@ function displaySavedMatch(match) {
         <div class="highlight-item">
           <span class="highlight-icon">⚡</span>
           <div class="highlight-content">
-            <div class="highlight-title">Award FRENZY</div>
-            <div class="highlight-description">${player.playerName} (5 kills em 1 min)</div>
+            <div class="highlight-title">FRENZY Award</div>
+            <div class="highlight-description">${player.playerName} (5 kills in 1 minute)</div>
           </div>
         </div>
       `;
     }
   });
 
-  elements.highlightsList.innerHTML = highlightsHtml || '<p style="color: var(--text-secondary)">Nenhum highlight nesta partida</p>';
+  elements.highlightsList.innerHTML = highlightsHtml || '<p style="color: var(--text-secondary)">No highlights in this match</p>';
 }
 
 document.querySelectorAll('.match-item').forEach((item) => {

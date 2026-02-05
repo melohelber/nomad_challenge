@@ -32,7 +32,7 @@ export class GetHighlightsUseCase {
       highlights.push({
         type: 'favorite_weapon',
         icon: '🔫',
-        title: 'Arma favorita do vencedor',
+        title: "Winner's Favorite Weapon",
         description: `${data.winnerFavoriteWeapon.weapon} (${data.winnerFavoriteWeapon.kills} kills)`,
       });
     }
@@ -41,8 +41,8 @@ export class GetHighlightsUseCase {
       highlights.push({
         type: 'best_streak',
         icon: '🔥',
-        title: 'Maior streak',
-        description: `${data.bestStreak.player.name} - ${data.bestStreak.streak} kills sem morrer`,
+        title: 'Best Streak',
+        description: `${data.bestStreak.player.name} - ${data.bestStreak.streak} kills without dying`,
       });
     }
 
@@ -50,8 +50,8 @@ export class GetHighlightsUseCase {
       highlights.push({
         type: 'flawless',
         icon: '🏅',
-        title: 'Award FLAWLESS',
-        description: `${player.name} (venceu sem morrer)`,
+        title: 'FLAWLESS Award',
+        description: `${player.name} (won without dying)`,
       });
     }
 
@@ -59,8 +59,8 @@ export class GetHighlightsUseCase {
       highlights.push({
         type: 'frenzy',
         icon: '⚡',
-        title: 'Award FRENZY',
-        description: `${player.name} (5 kills em 1 min)`,
+        title: 'FRENZY Award',
+        description: `${player.name} (5 kills in 1 minute)`,
       });
     }
 

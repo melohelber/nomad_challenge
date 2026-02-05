@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="pt-BR">
+<html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -9,7 +9,7 @@
 <body>
   <div class="container">
     <aside class="sidebar">
-      <h2>Historico</h2>
+      <h2>History</h2>
       <div id="matchHistory" class="match-history">
         {{#each matches}}
           <div class="match-item" data-match-id="{{this.id}}">
@@ -28,13 +28,13 @@
       <section class="upload-section">
         <div class="upload-box">
           <input type="file" id="logFile" accept=".txt,.log" />
-          <label for="logFile">Selecione o arquivo de log</label>
+          <label for="logFile">Select log file</label>
           <div class="upload-controls">
-            <label for="animationDelay">Velocidade:</label>
+            <label for="animationDelay">Speed:</label>
             <input type="range" id="animationDelay" min="100" max="1000" value="400" />
             <span id="delayValue">400ms</span>
           </div>
-          <button id="processBtn" class="btn-process">Processar</button>
+          <button id="processBtn" class="btn-process">Process</button>
         </div>
         <div id="progressBar" class="progress-bar hidden">
           <div class="progress-fill"></div>
