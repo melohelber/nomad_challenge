@@ -47,6 +47,13 @@ body {
   border-bottom: 1px solid var(--accent-secondary);
 }
 
+.history-hint {
+  font-size: 0.8rem;
+  color: var(--text-secondary);
+  margin-bottom: 15px;
+  font-style: italic;
+}
+
 .match-history {
   display: flex;
   flex-direction: column;

@@ -10,13 +10,8 @@
   <div class="container">
     <aside class="sidebar">
       <h2>History</h2>
+      <p class="history-hint">Uploaded log files will appear here</p>
       <div id="matchHistory" class="match-history">
-        {{#each matches}}
-          <div class="match-item" data-match-id="{{this.id}}">
-            <span class="match-id">Match {{this.id}}</span>
-            <span class="match-winner">{{this.winnerName}}</span>
-          </div>
-        {{/each}}
       </div>
     </aside>
 

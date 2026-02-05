@@ -22,14 +22,18 @@ const elements = {
 
 let previousRanking = [];
 let completedMatches = [];
+let currentFileName = '';
+let logEntries = []; // Store all log file entries with their matches
 
 // Show selected file name
 elements.logFile.addEventListener('change', (e) => {
   const file = e.target.files[0];
   if (file) {
+    currentFileName = file.name;
     elements.selectedFile.textContent = file.name;
     elements.fileLabel.textContent = 'Change file';
   } else {
+    currentFileName = '';
     elements.selectedFile.textContent = '';
     elements.fileLabel.textContent = 'Select log file';
   }
@@ -75,7 +79,7 @@ socket.on('rankingUpdate', (data) => {
 
 socket.on('matchComplete', (data) => {
   completedMatches.push(data);
-  addToHistory(data.matchId, data.ranking);
+  // Don't add individual matches to history - we'll add the whole log entry when processing completes
   previousRanking = [];
   elements.liveRankingBody.innerHTML = '';
 });
@@ -89,6 +93,18 @@ socket.on('processingComplete', (data) => {
     elements.progressBar.classList.add('hidden');
     elements.progressFill.style.width = '0%';
     elements.liveSection.classList.add('hidden');
+
+    // Save this log entry to history
+    if (completedMatches.length > 0) {
+      const entry = {
+        id: Date.now(),
+        fileName: currentFileName,
+        matches: [...completedMatches],
+        timestamp: new Date().toLocaleString(),
+      };
+      logEntries.unshift(entry);
+      addLogEntryToHistory(entry);
+    }
 
     // Show all matches results
     displayAllMatchResults();
@@ -237,134 +253,26 @@ function createMatchResultCard(match, matchNumber) {
   `;
 }
 
-function addToHistory(matchId, ranking) {
-  const winner = ranking.ranking[0];
-  const matchItem = document.createElement('div');
-  matchItem.className = 'match-item';
-  matchItem.dataset.matchId = matchId;
-  matchItem.innerHTML = `
-    <span class="match-id">Match ${matchId}</span>
-    <span class="match-winner">${winner ? winner.name : 'N/A'}</span>
+function addLogEntryToHistory(entry) {
+  const matchCount = entry.matches.length;
+  const entryItem = document.createElement('div');
+  entryItem.className = 'match-item';
+  entryItem.dataset.entryId = entry.id;
+  entryItem.innerHTML = `
+    <span class="match-id">${entry.fileName}</span>
+    <span class="match-winner">${matchCount} match${matchCount > 1 ? 'es' : ''}</span>
   `;
-  matchItem.addEventListener('click', () => loadMatch(matchId));
-  elements.matchHistory.insertBefore(matchItem, elements.matchHistory.firstChild);
+  entryItem.addEventListener('click', () => loadLogEntry(entry.id));
+  elements.matchHistory.insertBefore(entryItem, elements.matchHistory.firstChild);
 }
 
-async function loadMatch(matchId) {
-  try {
-    const response = await fetch(`/api/matches/${matchId}`);
-    const data = await response.json();
-
-    if (data.match) {
-      displaySingleMatch(data.match);
-    }
-  } catch (error) {
-    console.error('Error loading match:', error);
+function loadLogEntry(entryId) {
+  const entry = logEntries.find(e => e.id === entryId);
+  if (entry) {
+    completedMatches = [...entry.matches];
+    displayAllMatchResults();
   }
 }
 
-function displaySingleMatch(match) {
-  elements.liveSection.classList.add('hidden');
-  elements.resultsSection.classList.remove('hidden');
-  elements.matchCount.textContent = '1 match';
-
-  const sortedPlayers = [...match.players].sort((a, b) => b.frags - a.frags);
-
-  let rankingRows = '';
-  sortedPlayers.forEach((player, index) => {
-    const kd = player.deaths > 0 ? (player.frags / player.deaths).toFixed(2) : player.frags.toFixed(2);
-    rankingRows += `
-      <tr class="${index === 0 ? 'winner' : ''}">
-        <td class="position">${index + 1}</td>
-        <td class="player-name">${player.playerName}</td>
-        <td class="frags">${player.frags}</td>
-        <td class="deaths">${player.deaths}</td>
-        <td class="kd">${kd}</td>
-      </tr>
-    `;
-  });
-
-  let highlightsHtml = '';
-
-  if (match.winnerWeapon) {
-    highlightsHtml += `
-      <div class="highlight-item-small">
-        <span class="highlight-icon">🔫</span>
-        <span class="highlight-text"><strong>Winner's Favorite Weapon:</strong> ${match.winnerWeapon}</span>
-      </div>
-    `;
-  }
-
-  sortedPlayers.forEach((player) => {
-    if (player.maxStreak > 1) {
-      highlightsHtml += `
-        <div class="highlight-item-small">
-          <span class="highlight-icon">🔥</span>
-          <span class="highlight-text"><strong>Best Streak:</strong> ${player.playerName} - ${player.maxStreak} kills without dying</span>
-        </div>
-      `;
-    }
-
-    if (player.hasFlawlessAward) {
-      highlightsHtml += `
-        <div class="highlight-item-small">
-          <span class="highlight-icon">🏅</span>
-          <span class="highlight-text"><strong>FLAWLESS Award:</strong> ${player.playerName} (won without dying)</span>
-        </div>
-      `;
-    }
-
-    if (player.hasFrenzyAward) {
-      highlightsHtml += `
-        <div class="highlight-item-small">
-          <span class="highlight-icon">⚡</span>
-          <span class="highlight-text"><strong>FRENZY Award:</strong> ${player.playerName} (5 kills in 1 minute)</span>
-        </div>
-      `;
-    }
-  });
-
-  if (!highlightsHtml) {
-    highlightsHtml = '<p class="no-highlights">No highlights</p>';
-  }
-
-  elements.matchResultsList.innerHTML = `
-    <div class="match-result-card">
-      <div class="match-card-header">
-        <h3>Match ${match.id}</h3>
-      </div>
-
-      <div class="match-card-content">
-        <div class="ranking-section-small">
-          <h4>Ranking</h4>
-          <table class="ranking-table-small">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Player</th>
-                <th>Frags</th>
-                <th>Deaths</th>
-                <th>K/D</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rankingRows}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="highlights-section-small">
-          <h4>Highlights</h4>
-          ${highlightsHtml}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
-document.querySelectorAll('.match-item').forEach((item) => {
-  item.addEventListener('click', () => {
-    const matchId = item.dataset.matchId;
-    loadMatch(matchId);
-  });
-});
+// Note: loadLogEntry is used for history items from current session
+// For server-rendered history items (from database), we'll need a separate handler
