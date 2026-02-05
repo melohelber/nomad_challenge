@@ -935,6 +935,10 @@ body {
   display: table-row-group;
 }
 
+.accordion-hidden.expanded tr:first-child {
+  border-top: 1px solid var(--border-color);
+}
+
 .accordion-toggle {
   display: flex;
   align-items: center;

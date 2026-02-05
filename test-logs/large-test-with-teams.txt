@@ -1,0 +1,121 @@
+23/04/2019 15:00:00 - New match 1001 has started
+23/04/2019 15:00:15 - Roman killed Nick using AK47
+23/04/2019 15:00:22 - Roman killed Marcus using AK47
+23/04/2019 15:00:35 - Nick killed Marcus using M4A1
+23/04/2019 15:00:48 - Roman killed Nick using AK47
+23/04/2019 15:01:02 - Marcus killed Roman using AWP
+23/04/2019 15:01:15 - Nick killed Roman using Deagle
+23/04/2019 15:01:28 - Roman killed Nick using AK47
+23/04/2019 15:01:35 - Roman killed Marcus using AK47
+23/04/2019 15:01:42 - Roman killed Nick using AK47
+23/04/2019 15:01:50 - <WORLD> killed Marcus by DROWN
+23/04/2019 15:02:00 - Match 1001 has ended
+
+23/04/2019 16:00:00 - New match 2001 has started with teams
+23/04/2019 16:00:12 - [TR]Alpha killed [CT]Bravo using AK47
+23/04/2019 16:00:25 - [TR]Alpha killed [CT]Charlie using AK47
+23/04/2019 16:00:38 - [CT]Bravo killed [TR]Delta using M4A1
+23/04/2019 16:00:45 - [TR]Alpha killed [TR]Delta using AK47
+23/04/2019 16:00:55 - [CT]Charlie killed [TR]Alpha using AWP
+23/04/2019 16:01:08 - [CT]Bravo killed [TR]Echo using M4A1
+23/04/2019 16:01:20 - [TR]Delta killed [CT]Foxtrot using Glock
+23/04/2019 16:01:32 - [TR]Echo killed [CT]Bravo using AK47
+23/04/2019 16:01:45 - [CT]Charlie killed [CT]Foxtrot using AWP
+23/04/2019 16:01:58 - [TR]Alpha killed [CT]Charlie using AK47
+23/04/2019 16:02:10 - <WORLD> killed [TR]Echo by DROWN
+23/04/2019 16:02:22 - [CT]Bravo killed [TR]Alpha using M4A1
+23/04/2019 16:02:35 - [TR]Delta killed [CT]Bravo using Deagle
+23/04/2019 16:02:48 - [TR]Delta killed [CT]Charlie using Deagle
+23/04/2019 16:03:00 - Match 2001 has ended with teams
+
+23/04/2019 17:00:00 - New match 3001 has started
+23/04/2019 17:00:10 - John killed Mike using Knife
+23/04/2019 17:00:18 - John killed Sarah using Knife
+23/04/2019 17:00:25 - John killed Mike using Knife
+23/04/2019 17:00:32 - John killed Sarah using Knife
+23/04/2019 17:00:40 - John killed Mike using Knife
+23/04/2019 17:00:48 - Sarah killed John using Shotgun
+23/04/2019 17:00:55 - Mike killed Sarah using MP5
+23/04/2019 17:01:05 - Match 3001 has ended
+
+23/04/2019 18:00:00 - New match 4001 has started with teams
+23/04/2019 18:00:08 - [CT]Snake killed [TR]Ocelot using USP
+23/04/2019 18:00:15 - [CT]Snake killed [TR]Liquid using USP
+23/04/2019 18:00:22 - [CT]Snake killed [TR]Mantis using USP
+23/04/2019 18:00:28 - [CT]Snake killed [TR]Raven using USP
+23/04/2019 18:00:35 - [CT]Snake killed [TR]Wolf using USP
+23/04/2019 18:00:42 - [TR]Ocelot killed [CT]Meryl using Revolver
+23/04/2019 18:00:50 - [TR]Liquid killed [CT]Otacon using FAMAS
+23/04/2019 18:00:58 - [CT]Snake killed [TR]Ocelot using USP
+23/04/2019 18:01:05 - [CT]Snake killed [TR]Liquid using USP
+23/04/2019 18:01:12 - [TR]Mantis killed [CT]Snake using Psychic
+23/04/2019 18:01:20 - [CT]Meryl killed [TR]Mantis using SOCOM
+23/04/2019 18:01:28 - [CT]Meryl killed [TR]Raven using SOCOM
+23/04/2019 18:01:35 - [TR]Wolf killed [CT]Meryl using Sniper
+23/04/2019 18:01:42 - [CT]Snake killed [TR]Wolf using USP
+23/04/2019 18:01:50 - [CT]Otacon killed [CT]Snake using Accident
+23/04/2019 18:02:00 - Match 4001 has ended with teams
+
+23/04/2019 19:00:00 - New match 5001 has started with teams
+23/04/2019 19:00:05 - [TR]Fury killed [CT]Storm using AK47
+23/04/2019 19:00:10 - [TR]Fury killed [CT]Blaze using AK47
+23/04/2019 19:00:15 - [TR]Fury killed [CT]Frost using AK47
+23/04/2019 19:00:20 - [TR]Fury killed [CT]Shadow using AK47
+23/04/2019 19:00:25 - [TR]Fury killed [CT]Venom using AK47
+23/04/2019 19:00:35 - [TR]Rage killed [CT]Storm using M4A1
+23/04/2019 19:00:45 - [CT]Blaze killed [TR]Havoc using AWP
+23/04/2019 19:00:55 - [TR]Fury killed [TR]Rage using AK47
+23/04/2019 19:01:05 - [TR]Fury killed [TR]Havoc using AK47
+23/04/2019 19:01:15 - [CT]Storm killed [TR]Fury using Knife
+23/04/2019 19:01:25 - [TR]Rage killed [CT]Blaze using M4A1
+23/04/2019 19:01:35 - [CT]Frost killed [TR]Rage using AWP
+23/04/2019 19:01:45 - <WORLD> killed [CT]Shadow by FALL
+23/04/2019 19:01:55 - [CT]Venom killed [TR]Havoc using Deagle
+23/04/2019 19:02:00 - Match 5001 has ended with teams
+
+23/04/2019 20:00:00 - New match 6001 has started
+23/04/2019 20:00:10 - Alex killed Bob using Rifle
+23/04/2019 20:00:20 - Bob killed Charlie using Shotgun
+23/04/2019 20:00:30 - Charlie killed Alex using Pistol
+23/04/2019 20:00:40 - Alex killed Charlie using Rifle
+23/04/2019 20:00:50 - Bob killed Alex using Shotgun
+23/04/2019 20:01:00 - Charlie killed Bob using Pistol
+23/04/2019 20:01:10 - <WORLD> killed Alex by EXPLOSION
+23/04/2019 20:01:20 - <WORLD> killed Bob by EXPLOSION
+23/04/2019 20:01:30 - <WORLD> killed Charlie by EXPLOSION
+23/04/2019 20:01:40 - Alex killed Bob using Rifle
+23/04/2019 20:01:50 - Alex killed Charlie using Rifle
+23/04/2019 20:02:00 - Match 6001 has ended
+
+23/04/2019 21:00:00 - New match 7001 has started with teams
+23/04/2019 21:00:08 - [TR]Phoenix killed [CT]Sentinel using Glock
+23/04/2019 21:00:16 - [TR]Phoenix killed [CT]Guardian using Glock
+23/04/2019 21:00:24 - [CT]Sentinel killed [TR]Viper using M4A1
+23/04/2019 21:00:32 - [CT]Guardian killed [TR]Cobra using FAMAS
+23/04/2019 21:00:40 - [TR]Phoenix killed [TR]Viper using Glock
+23/04/2019 21:00:48 - [TR]Phoenix killed [TR]Cobra using Glock
+23/04/2019 21:00:56 - [CT]Sentinel killed [TR]Phoenix using AWP
+23/04/2019 21:01:04 - [TR]Viper killed [CT]Sentinel using AK47
+23/04/2019 21:01:12 - [TR]Viper killed [CT]Guardian using AK47
+23/04/2019 21:01:20 - [CT]Guardian killed [CT]Sentinel using Knife
+23/04/2019 21:01:28 - [TR]Cobra killed [CT]Guardian using Deagle
+23/04/2019 21:01:36 - <WORLD> killed [TR]Viper by DROWN
+23/04/2019 21:01:44 - [TR]Cobra killed [CT]Sentinel using Deagle
+23/04/2019 21:01:52 - [CT]Sentinel killed [TR]Cobra using AWP
+23/04/2019 21:02:00 - Match 7001 has ended with teams
+
+23/04/2019 22:00:00 - New match 8001 has started
+23/04/2019 22:00:05 - Ace killed King using SMG
+23/04/2019 22:00:10 - Ace killed Queen using SMG
+23/04/2019 22:00:15 - Ace killed Jack using SMG
+23/04/2019 22:00:20 - Ace killed King using SMG
+23/04/2019 22:00:25 - Ace killed Queen using SMG
+23/04/2019 22:00:35 - King killed Ace using Rifle
+23/04/2019 22:00:45 - Queen killed Ace using Pistol
+23/04/2019 22:00:55 - Jack killed King using Knife
+23/04/2019 22:01:05 - Jack killed Queen using Knife
+23/04/2019 22:01:15 - Jack killed Ace using Knife
+23/04/2019 22:01:25 - Ace killed Jack using SMG
+23/04/2019 22:01:35 - Ace killed King using SMG
+23/04/2019 22:01:45 - Ace killed Queen using SMG
+23/04/2019 22:02:00 - Match 8001 has ended
