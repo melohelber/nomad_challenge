@@ -30,14 +30,16 @@ export class LogParserService {
     const lines = content.split('\n').filter((line) => line.trim());
     const matches: Match[] = [];
     let currentMatch: Match | null = null;
+    let currentHasTeams = false;
 
     for (const line of lines) {
-      const event = this.parseLine(line);
+      const event = this.parseLine(line, currentHasTeams);
       if (!event) continue;
 
       switch (event.type) {
         case 'match_start':
           currentMatch = new Match(event.matchId, event.timestamp, event.hasTeams);
+          currentHasTeams = event.hasTeams;
           break;
 
         case 'match_end':
@@ -45,6 +47,7 @@ export class LogParserService {
             currentMatch.endMatch(event.timestamp);
             matches.push(currentMatch);
             currentMatch = null;
+            currentHasTeams = false;
           }
           break;
 
@@ -65,9 +68,10 @@ export class LogParserService {
     const events: LogEvent[] = [];
     const invalidLines: { line: string; error: string }[] = [];
     let currentMatch: Match | null = null;
+    let currentHasTeams = false;
 
     for (const line of lines) {
-      const event = this.parseLine(line);
+      const event = this.parseLine(line, currentHasTeams);
       if (!event) {
         if (this.looksLikeLogLine(line)) {
           const error = this.getFormatError(line) || 'Invalid format';
@@ -81,6 +85,7 @@ export class LogParserService {
       switch (event.type) {
         case 'match_start':
           currentMatch = new Match(event.matchId, event.timestamp, event.hasTeams);
+          currentHasTeams = event.hasTeams;
           break;
 
         case 'match_end':
@@ -88,6 +93,7 @@ export class LogParserService {
             currentMatch.endMatch(event.timestamp);
             matches.push(currentMatch);
             currentMatch = null;
+            currentHasTeams = false;
           }
           break;
 
@@ -157,7 +163,7 @@ export class LogParserService {
     return null;
   }
 
-  private parseLine(line: string): LogEvent | null {
+  private parseLine(line: string, hasTeams: boolean = false): LogEvent | null {
     const trimmedLine = line.trim();
 
     // Check teams format first (more specific)
@@ -209,6 +215,7 @@ export class LogParserService {
           this.parseTimestamp(worldKill[1]),
           worldKill[2],
           worldKill[3],
+          hasTeams,
         ),
       };
     }
@@ -222,6 +229,7 @@ export class LogParserService {
           playerKill[2],
           playerKill[3],
           playerKill[4],
+          hasTeams,
         ),
       };
     }
