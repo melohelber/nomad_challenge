@@ -11,17 +11,23 @@ import { CalculateRankingUseCase } from '../../core/use-cases/calculate-ranking.
 import { GetHighlightsUseCase } from '../../core/use-cases/get-highlights.use-case';
 import { MatchRepository } from '../../infra/database/repositories/match.repository';
 import { Match } from '../../core/entities';
+import { LogEvent } from '../../infra/parsers';
+import { Team } from '../../core/entities/kill-event.entity';
 
 interface RankingSnapshot {
   matchId: string;
   eventNumber: number;
   totalEvents: number;
+  hasTeams: boolean;
   ranking: {
     position: number;
     name: string;
     frags: number;
     deaths: number;
     kd: number;
+    team?: Team;
+    friendlyKills?: number;
+    score?: number;
   }[];
   lastEvent: {
     type: 'kill' | 'match_start' | 'match_end';
@@ -29,6 +35,7 @@ interface RankingSnapshot {
     victim?: string;
     weapon?: string;
     isWorldKill?: boolean;
+    isFriendlyFire?: boolean;
   };
 }
 
@@ -91,12 +98,13 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
       switch (event.type) {
         case 'match_start':
-          currentMatch = new Match(event.matchId, event.timestamp);
+          currentMatch = new Match(event.matchId, event.timestamp, event.hasTeams);
           if (!shouldSkip) {
             client.emit('rankingUpdate', {
               matchId: event.matchId,
               eventNumber,
               totalEvents: events.length,
+              hasTeams: event.hasTeams,
               ranking: [],
               lastEvent: { type: 'match_start' },
             } as RankingSnapshot);
@@ -113,6 +121,7 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
                 matchId: currentMatch.id,
                 eventNumber,
                 totalEvents: events.length,
+                hasTeams: currentMatch.hasTeams,
                 ranking,
                 lastEvent: {
                   type: 'kill',
@@ -120,6 +129,7 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
                   victim: event.event.victimName,
                   weapon: event.event.weapon,
                   isWorldKill: event.event.isWorldKill,
+                  isFriendlyFire: event.event.isFriendlyFire,
                 },
               } as RankingSnapshot);
             }
@@ -137,6 +147,7 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
 
             client.emit('matchComplete', {
               matchId: currentMatch.id,
+              hasTeams: currentMatch.hasTeams,
               ranking: finalRanking,
               highlights: highlights.highlights,
             });
@@ -157,13 +168,23 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
   }
 
   private buildRankingSnapshot(match: Match): RankingSnapshot['ranking'] {
-    return match.getRanking().map((player, index) => ({
-      position: index + 1,
-      name: player.name,
-      frags: player.frags,
-      deaths: player.deaths,
-      kd: player.getKD(),
-    }));
+    return match.getRanking().map((player, index) => {
+      const entry: RankingSnapshot['ranking'][0] = {
+        position: index + 1,
+        name: player.name,
+        frags: player.frags,
+        deaths: player.deaths,
+        kd: player.getKD(),
+      };
+
+      if (match.hasTeams) {
+        entry.team = player.team;
+        entry.friendlyKills = player.friendlyKills;
+        entry.score = player.getScore();
+      }
+
+      return entry;
+    });
   }
 
   private sleep(ms: number): Promise<void> {
@@ -171,7 +192,7 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
   }
 
   private validateLogEvents(
-    events: { type: string; matchId?: string }[],
+    events: LogEvent[],
     invalidLines: { line: string; error: string }[]
   ): { isValid: boolean; error?: string } {
     if (invalidLines.length > 0) {
@@ -193,13 +214,13 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
       };
     }
 
-    const startedMatches = new Set<string>();
+    const startedMatches = new Map<string, boolean>();
     const endedMatches = new Set<string>();
 
     for (const event of events) {
-      if (event.type === 'match_start' && event.matchId) {
-        startedMatches.add(event.matchId);
-      } else if (event.type === 'match_end' && event.matchId) {
+      if (event.type === 'match_start') {
+        startedMatches.set(event.matchId, event.hasTeams);
+      } else if (event.type === 'match_end') {
         endedMatches.add(event.matchId);
       }
     }
@@ -209,7 +230,7 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
     }
 
     const incompleteMatches: string[] = [];
-    for (const matchId of startedMatches) {
+    for (const matchId of startedMatches.keys()) {
       if (!endedMatches.has(matchId)) {
         incompleteMatches.push(matchId);
       }
@@ -220,6 +241,58 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
       return {
         isValid: false,
         error: `Incomplete matches: ${matchList}\n\nEach match needs both:\n• "New match [ID] has started"\n• "Match [ID] has ended"`
+      };
+    }
+
+    // Validate team names for matches with teams
+    const teamValidation = this.validateTeamNames(events, startedMatches);
+    if (!teamValidation.isValid) {
+      return teamValidation;
+    }
+
+    return { isValid: true };
+  }
+
+  private validateTeamNames(
+    events: LogEvent[],
+    matchesWithTeams: Map<string, boolean>
+  ): { isValid: boolean; error?: string } {
+    let currentMatchId: string | null = null;
+    let currentMatchHasTeams = false;
+    const playersWithoutTeam: string[] = [];
+
+    for (const event of events) {
+      if (event.type === 'match_start') {
+        currentMatchId = event.matchId;
+        currentMatchHasTeams = event.hasTeams;
+      } else if (event.type === 'match_end') {
+        currentMatchId = null;
+        currentMatchHasTeams = false;
+      } else if (event.type === 'kill' && currentMatchHasTeams) {
+        const killEvent = event.event;
+
+        // Check killer team (unless world kill)
+        if (!killEvent.isWorldKill && !killEvent.killerTeam) {
+          if (!playersWithoutTeam.includes(killEvent.killerName)) {
+            playersWithoutTeam.push(killEvent.killerName);
+          }
+        }
+
+        // Check victim team
+        if (!killEvent.victimTeam) {
+          if (!playersWithoutTeam.includes(killEvent.victimName)) {
+            playersWithoutTeam.push(killEvent.victimName);
+          }
+        }
+      }
+    }
+
+    if (playersWithoutTeam.length > 0) {
+      const playerList = playersWithoutTeam.slice(0, 5).join(', ');
+      const more = playersWithoutTeam.length > 5 ? ` and ${playersWithoutTeam.length - 5} more` : '';
+      return {
+        isValid: false,
+        error: `Team mode validation error:\n\nPlayers without team prefix: ${playerList}${more}\n\nIn "with teams" matches, all player names must have [TR] or [CT] prefix.\nExample: [TR]PlayerName or [CT]PlayerName`
       };
     }
 

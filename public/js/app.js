@@ -15,6 +15,7 @@ const elements = {
   errorMessage: document.getElementById('errorMessage'),
   liveSection: document.getElementById('liveSection'),
   liveRankingBody: document.getElementById('liveRankingBody'),
+  liveRankingHead: document.querySelector('#liveSection .ranking-table thead tr'),
   currentMatchId: document.getElementById('currentMatchId'),
   lastEvent: document.getElementById('lastEvent'),
   resultsSection: document.getElementById('resultsSection'),
@@ -26,6 +27,7 @@ let previousRanking = [];
 let completedMatches = [];
 let logEntries = [];
 let entryCounter = 1;
+let currentHasTeams = false;
 
 elements.animationDelay.addEventListener('input', (e) => {
   elements.delayValue.textContent = `${e.target.value}ms`;
@@ -74,18 +76,24 @@ elements.processBtn.addEventListener('click', () => {
   elements.lastEvent.innerHTML = '';
   previousRanking = [];
   completedMatches = [];
+  currentHasTeams = false;
 
   socket.emit('processLog', { content, delay });
 });
 
 socket.on('rankingUpdate', (data) => {
   updateProgress(data.eventNumber, data.totalEvents);
-  elements.currentMatchId.textContent = `Match #${data.matchId}`;
+
+  const teamsBadge = data.hasTeams ? ' <span class="teams-badge">TEAMS</span>' : '';
+  elements.currentMatchId.innerHTML = `Match #${data.matchId}${teamsBadge}`;
+
+  currentHasTeams = data.hasTeams;
 
   if (data.lastEvent.type === 'match_start') {
     previousRanking = [];
     elements.lastEvent.classList.add('hidden');
     elements.lastEvent.innerHTML = '';
+    updateLiveTableHeader(data.hasTeams);
     return;
   }
 
@@ -93,7 +101,7 @@ socket.on('rankingUpdate', (data) => {
     showLastEvent(data.lastEvent);
   }
 
-  animateLiveRanking(data.ranking);
+  animateLiveRanking(data.ranking, data.hasTeams);
 });
 
 socket.on('matchComplete', (data) => {
@@ -149,6 +157,28 @@ function updateProgress(current, total) {
   if (elements.progressText) elements.progressText.textContent = `${percent}%`;
 }
 
+function updateLiveTableHeader(hasTeams) {
+  if (hasTeams) {
+    elements.liveRankingHead.innerHTML = `
+      <th>#</th>
+      <th>Team</th>
+      <th>Player</th>
+      <th>Score</th>
+      <th>Kills</th>
+      <th>FF</th>
+      <th>Deaths</th>
+    `;
+  } else {
+    elements.liveRankingHead.innerHTML = `
+      <th>#</th>
+      <th>Player</th>
+      <th>Score (Frags)</th>
+      <th>Deaths</th>
+      <th>K/D</th>
+    `;
+  }
+}
+
 function showLastEvent(event) {
   elements.lastEvent.classList.remove('hidden');
 
@@ -159,6 +189,16 @@ function showLastEvent(event) {
       <span class="event-victim">${event.victim}</span>
       <span class="event-weapon">by ${event.weapon}</span>
     `;
+  } else if (event.isFriendlyFire) {
+    elements.lastEvent.innerHTML = `
+      <span class="event-ff">⚠ FRIENDLY FIRE</span>
+      <span class="event-killer">${event.killer}</span>
+      <span class="event-action">killed teammate</span>
+      <span class="event-victim">${event.victim}</span>
+      <span class="event-weapon">with ${event.weapon}</span>
+    `;
+    elements.lastEvent.classList.add('friendly-fire');
+    setTimeout(() => elements.lastEvent.classList.remove('friendly-fire'), 500);
   } else {
     elements.lastEvent.innerHTML = `
       <span class="event-killer">${event.killer}</span>
@@ -169,7 +209,7 @@ function showLastEvent(event) {
   }
 }
 
-function animateLiveRanking(ranking) {
+function animateLiveRanking(ranking, hasTeams) {
   const previousMap = new Map(previousRanking.map((p, i) => [p.name, i]));
 
   let html = '';
@@ -189,15 +229,33 @@ function animateLiveRanking(ranking) {
       rowClass += ' winner';
     }
 
-    html += `
-      <tr class="${rowClass}">
-        <td class="position">${player.position}</td>
-        <td class="player-name">${player.name}</td>
-        <td class="frags">${player.frags}</td>
-        <td class="deaths">${player.deaths}</td>
-        <td class="kd">${player.kd.toFixed(2)}</td>
-      </tr>
-    `;
+    if (hasTeams) {
+      const teamClass = player.team === 'TR' ? 'team-tr' : 'team-ct';
+      const score = player.score !== undefined ? player.score : player.frags;
+      const ff = player.friendlyKills || 0;
+
+      html += `
+        <tr class="${rowClass}">
+          <td class="position">${player.position}</td>
+          <td class="team-cell"><span class="team-badge ${teamClass}">${player.team || '?'}</span></td>
+          <td class="player-name">${player.name}</td>
+          <td class="score">${score}</td>
+          <td class="frags">${player.frags}</td>
+          <td class="ff ${ff > 0 ? 'has-ff' : ''}">${ff > 0 ? `-${ff}` : '0'}</td>
+          <td class="deaths">${player.deaths}</td>
+        </tr>
+      `;
+    } else {
+      html += `
+        <tr class="${rowClass}">
+          <td class="position">${player.position}</td>
+          <td class="player-name">${player.name}</td>
+          <td class="frags">${player.frags}</td>
+          <td class="deaths">${player.deaths}</td>
+          <td class="kd">${player.kd.toFixed(2)}</td>
+        </tr>
+      `;
+    }
   });
 
   elements.liveRankingBody.innerHTML = html;
@@ -238,7 +296,7 @@ function createGlobalRankingCard() {
       <tr class="${index === 0 ? 'winner' : ''}">
         <td class="position">${index + 1}</td>
         <td class="player-name">${player.name}</td>
-        <td class="frags">${player.frags}</td>
+        <td class="score">${player.score}</td>
         <td class="deaths">${player.deaths}</td>
         <td class="kd">${player.kd.toFixed(2)}</td>
         <td class="wins">${player.wins}</td>
@@ -295,7 +353,7 @@ function createGlobalRankingCard() {
           <tr>
             <th>#</th>
             <th>Player</th>
-            <th>Frags</th>
+            <th>Score</th>
             <th>Deaths</th>
             <th>K/D</th>
             <th>Wins</th>
@@ -315,19 +373,64 @@ function createGlobalRankingCard() {
 function createMatchResultCard(match, matchNumber) {
   const ranking = match.ranking.ranking;
   const highlights = match.highlights;
+  const hasTeams = match.hasTeams || match.ranking.hasTeams;
 
+  let tableHeader = '';
   let rankingRows = '';
-  ranking.forEach((player) => {
-    rankingRows += `
-      <tr class="${player.isWinner ? 'winner' : ''}">
-        <td class="position">${player.position}</td>
-        <td class="player-name">${player.name}</td>
-        <td class="frags">${player.frags}</td>
-        <td class="deaths">${player.deaths}</td>
-        <td class="kd">${player.kd.toFixed(2)}</td>
+
+  if (hasTeams) {
+    tableHeader = `
+      <tr>
+        <th>#</th>
+        <th>Team</th>
+        <th>Player</th>
+        <th>Score</th>
+        <th>Kills</th>
+        <th>FF</th>
+        <th>Deaths</th>
       </tr>
     `;
-  });
+
+    ranking.forEach((player) => {
+      const teamClass = player.team === 'TR' ? 'team-tr' : 'team-ct';
+      const score = player.score !== undefined ? player.score : player.frags;
+      const ff = player.friendlyKills || 0;
+
+      rankingRows += `
+        <tr class="${player.isWinner ? 'winner' : ''}">
+          <td class="position">${player.position}</td>
+          <td class="team-cell"><span class="team-badge ${teamClass}">${player.team || '?'}</span></td>
+          <td class="player-name">${player.name}</td>
+          <td class="score">${score}</td>
+          <td class="frags">${player.frags}</td>
+          <td class="ff ${ff > 0 ? 'has-ff' : ''}">${ff > 0 ? `-${ff}` : '0'}</td>
+          <td class="deaths">${player.deaths}</td>
+        </tr>
+      `;
+    });
+  } else {
+    tableHeader = `
+      <tr>
+        <th>#</th>
+        <th>Player</th>
+        <th>Score (Frags)</th>
+        <th>Deaths</th>
+        <th>K/D</th>
+      </tr>
+    `;
+
+    ranking.forEach((player) => {
+      rankingRows += `
+        <tr class="${player.isWinner ? 'winner' : ''}">
+          <td class="position">${player.position}</td>
+          <td class="player-name">${player.name}</td>
+          <td class="score">${player.frags}</td>
+          <td class="deaths">${player.deaths}</td>
+          <td class="kd">${player.kd.toFixed(2)}</td>
+        </tr>
+      `;
+    });
+  }
 
   let highlightsHtml = '';
   if (highlights && highlights.length > 0) {
@@ -345,25 +448,22 @@ function createMatchResultCard(match, matchNumber) {
     `;
   }
 
+  const teamsBadge = hasTeams ? '<span class="teams-mode-badge">TEAMS MODE</span>' : '';
+
   return `
-    <div class="result-card match-card">
+    <div class="result-card match-card ${hasTeams ? 'has-teams' : ''}">
       <div class="card-header">
         <div class="card-title">
           <span class="card-icon">🎯</span>
           <span>Match ${matchNumber}</span>
+          ${teamsBadge}
         </div>
         <span class="card-badge match-id">#${match.matchId}</span>
       </div>
 
       <table class="ranking-table">
         <thead>
-          <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>Frags</th>
-            <th>Deaths</th>
-            <th>K/D</th>
-          </tr>
+          ${tableHeader}
         </thead>
         <tbody>
           ${rankingRows}
@@ -409,18 +509,26 @@ function calculateGlobalRanking() {
 
   completedMatches.forEach((match) => {
     const ranking = match.ranking.ranking;
+    const hasTeams = match.hasTeams || match.ranking.hasTeams;
 
     ranking.forEach((player) => {
       totalKills += player.frags;
       totalDeaths += player.deaths;
 
       if (!playerStats.has(player.name)) {
-        playerStats.set(player.name, { frags: 0, deaths: 0, matches: 0, wins: 0 });
+        playerStats.set(player.name, {
+          frags: 0,
+          deaths: 0,
+          friendlyKills: 0,
+          matches: 0,
+          wins: 0
+        });
       }
 
       const stats = playerStats.get(player.name);
       stats.frags += player.frags;
       stats.deaths += player.deaths;
+      stats.friendlyKills += (player.friendlyKills || 0);
       stats.matches += 1;
       if (player.isWinner) {
         stats.wins += 1;
@@ -430,10 +538,13 @@ function calculateGlobalRanking() {
 
   const ranking = [];
   playerStats.forEach((stats, name) => {
+    const score = stats.frags - stats.friendlyKills;
     const kd = stats.deaths > 0 ? stats.frags / stats.deaths : stats.frags;
     ranking.push({
       name,
       frags: stats.frags,
+      friendlyKills: stats.friendlyKills,
+      score,
       deaths: stats.deaths,
       kd,
       matches: stats.matches,
@@ -441,7 +552,8 @@ function calculateGlobalRanking() {
     });
   });
 
-  ranking.sort((a, b) => b.frags - a.frags);
+  // Sort by score (frags - friendly kills)
+  ranking.sort((a, b) => b.score - a.score);
 
   return {
     totalMatches: completedMatches.length,
@@ -454,6 +566,7 @@ function calculateGlobalRanking() {
 
 function addLogEntryToHistory(entry) {
   const matchCount = entry.matches.length;
+  const hasTeamsMatch = entry.matches.some(m => m.hasTeams || m.ranking?.hasTeams);
 
   const hintEl = document.querySelector('.history-hint');
   if (hintEl) hintEl.classList.add('hidden');
@@ -461,10 +574,13 @@ function addLogEntryToHistory(entry) {
   const entryItem = document.createElement('div');
   entryItem.className = 'history-item';
   entryItem.dataset.entryId = entry.id;
+
+  const teamsIndicator = hasTeamsMatch ? '<span class="history-teams-badge">T</span>' : '';
+
   entryItem.innerHTML = `
     <div class="history-item-icon">📄</div>
     <div class="history-item-info">
-      <span class="history-item-name">${entry.name}</span>
+      <span class="history-item-name">${entry.name} ${teamsIndicator}</span>
       <span class="history-item-meta">${matchCount} match${matchCount > 1 ? 'es' : ''}</span>
     </div>
   `;

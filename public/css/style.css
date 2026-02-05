@@ -254,6 +254,114 @@ body {
   color: var(--text-muted);
 }
 
+/* ===== FORMAT HELP ===== */
+.format-help {
+  margin-top: 12px;
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.format-help-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 14px;
+  background: var(--bg-input);
+  color: var(--text-secondary);
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.format-help-toggle:hover {
+  background: var(--bg-hover);
+  color: var(--text-primary);
+}
+
+.format-help[open] .format-help-toggle {
+  border-bottom: 1px solid var(--border-color);
+}
+
+.help-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  background: var(--accent);
+  color: var(--bg-dark);
+  border-radius: 50%;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.format-help-content {
+  padding: 16px;
+  background: var(--bg-input);
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+}
+
+.format-section h4 {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-primary);
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.team-label {
+  font-size: 11px;
+  font-weight: 700;
+  background: linear-gradient(90deg, #ff6b35, #4a9eff);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.format-note {
+  font-size: 11px;
+  color: var(--text-muted);
+  margin-bottom: 8px;
+  font-style: italic;
+}
+
+.format-example {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  line-height: 1.5;
+  background: var(--bg-darker);
+  padding: 10px 12px;
+  border-radius: 6px;
+  color: var(--text-secondary);
+  overflow-x: auto;
+  white-space: pre;
+  margin: 0;
+}
+
+.scoring-info {
+  margin-top: 10px;
+  padding: 8px 12px;
+  background: rgba(245, 158, 11, 0.1);
+  border-radius: 6px;
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.scoring-info strong {
+  color: var(--text-primary);
+}
+
+@media (max-width: 700px) {
+  .format-help-content {
+    grid-template-columns: 1fr;
+  }
+}
+
 .input-controls {
   display: flex;
   align-items: center;
@@ -516,6 +624,67 @@ body {
   font-weight: 700;
 }
 
+.event-ff {
+  color: #ff6b6b;
+  font-style: italic;
+  font-size: 12px;
+  margin-left: 8px;
+  background: rgba(255, 107, 107, 0.15);
+  padding: 2px 8px;
+  border-radius: 4px;
+}
+
+/* ===== TEAM BADGES ===== */
+.team-badge {
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-right: 6px;
+}
+
+.team-tr {
+  background: linear-gradient(135deg, #ff6b35, #ff4444);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(255, 107, 53, 0.4);
+}
+
+.team-ct {
+  background: linear-gradient(135deg, #4a9eff, #2563eb);
+  color: #fff;
+  box-shadow: 0 0 8px rgba(74, 158, 255, 0.4);
+}
+
+.teams-badge,
+.teams-mode-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  background: linear-gradient(135deg, rgba(255, 107, 53, 0.2), rgba(74, 158, 255, 0.2));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--text-secondary);
+  margin-left: 8px;
+}
+
+.history-teams-badge {
+  display: inline-block;
+  background: linear-gradient(90deg, #ff6b35, #4a9eff);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 9px;
+  font-weight: 700;
+  margin-left: 6px;
+  text-transform: uppercase;
+}
+
 @keyframes fadeIn {
   from { opacity: 0; transform: translateY(-8px); }
   to { opacity: 1; transform: translateY(0); }
@@ -596,6 +765,22 @@ body {
   color: var(--accent);
   font-weight: 600;
   font-family: var(--font-mono);
+}
+
+.ranking-table .score {
+  color: var(--gold);
+  font-weight: 700;
+  font-family: var(--font-mono);
+}
+
+.ranking-table .ff {
+  color: #ff6b6b;
+  font-family: var(--font-mono);
+}
+
+.ranking-table .ff.has-ff {
+  color: #ff4444;
+  font-weight: 600;
 }
 
 .ranking-table .wins {
@@ -916,6 +1101,22 @@ body {
 .ranking-table-small .kd {
   color: var(--accent);
   font-family: var(--font-mono);
+}
+
+.ranking-table-small .score {
+  color: var(--gold);
+  font-weight: 600;
+  font-family: var(--font-mono);
+}
+
+.ranking-table-small .ff {
+  color: #ff6b6b;
+  font-family: var(--font-mono);
+}
+
+.ranking-table-small .ff.has-ff {
+  color: #ff4444;
+  font-weight: 600;
 }
 
 /* ===== HIGHLIGHTS ===== */

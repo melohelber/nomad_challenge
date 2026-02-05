@@ -1,18 +1,27 @@
+import { Team } from './kill-event.entity';
+
 export class Player {
   public frags: number = 0;
   public deaths: number = 0;
+  public friendlyKills: number = 0;
   public currentStreak: number = 0;
   public maxStreak: number = 0;
   public weaponKills: Map<string, number> = new Map();
   public killTimestamps: Date[] = [];
+  public team?: Team;
 
   constructor(public readonly name: string) {}
 
-  addKill(weapon: string, timestamp: Date): void {
-    this.frags++;
-    this.currentStreak++;
-    if (this.currentStreak > this.maxStreak) {
-      this.maxStreak = this.currentStreak;
+  addKill(weapon: string, timestamp: Date, isFriendlyFire: boolean = false): void {
+    if (isFriendlyFire) {
+      this.friendlyKills++;
+      this.currentStreak = 0;
+    } else {
+      this.frags++;
+      this.currentStreak++;
+      if (this.currentStreak > this.maxStreak) {
+        this.maxStreak = this.currentStreak;
+      }
     }
 
     const currentCount = this.weaponKills.get(weapon) || 0;
@@ -24,6 +33,10 @@ export class Player {
   addDeath(): void {
     this.deaths++;
     this.currentStreak = 0;
+  }
+
+  getScore(): number {
+    return this.frags - this.friendlyKills;
   }
 
   getFavoriteWeapon(): { weapon: string; kills: number } | null {

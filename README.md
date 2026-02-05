@@ -16,55 +16,87 @@ Sistema para processar logs de partidas de jogos FPS, calcular rankings e exibir
 - Award FLAWLESS (venceu sem morrer)
 - Award FRENZY (5 kills em 1 minuto)
 - Ranking global (todas as partidas)
-- Sidebar com histórico de partidas
+- **Modo Times (TR vs CT) com Friendly Fire**
 
 ### Animação em Tempo Real
 O sistema usa WebSocket para atualizar o ranking em tempo real conforme os eventos são processados, criando uma animação visual que mostra as posições subindo e descendo.
 
-## Arquitetura
+> **Nota:** O banco de dados é armazenado em memória. Ao recarregar a página ou reiniciar o servidor, todos os dados são apagados e o sistema começa do zero.
 
-O projeto segue os princípios de Clean Architecture e SOLID:
+---
+
+## Modo Times (Team Mode)
+
+O sistema suporta partidas com dois times: **TR** (Terroristas) e **CT** (Contra-Terroristas).
+
+### Formato do Log com Times
 
 ```
-src/
-├── core/                    # Domínio
-│   ├── entities/            # Entidades do domínio
-│   └── use-cases/           # Casos de uso
-├── infra/                   # Infraestrutura
-│   ├── database/            # TypeORM + SQLite
-│   └── parsers/             # Parser de logs
-└── modules/                 # Módulos NestJS
-    ├── match/               # Controller e Service
-    └── websocket/           # Gateway WebSocket
+DD/MM/YYYY HH:MM:SS - New match [ID] has started with teams
+DD/MM/YYYY HH:MM:SS - [TR]Player killed [CT]Player using Weapon
+DD/MM/YYYY HH:MM:SS - Match [ID] has ended with teams
 ```
 
-## Stack Tecnológica
+**Exemplo:**
+```
+23/04/2019 15:34:22 - New match 11348965 has started with teams
+23/04/2019 15:36:04 - [TR]Roman killed [CT]Nick using M16
+23/04/2019 15:36:33 - [TR]Roman killed [TR]Alpha using M16
+23/04/2019 15:39:22 - Match 11348965 has ended with teams
+```
 
-| Camada | Tecnologia |
-|--------|------------|
-| Backend | NestJS + TypeScript |
-| Banco de Dados | SQLite (better-sqlite3) |
-| Real-time | WebSocket (Socket.io) |
-| Frontend | Handlebars + Vanilla JS + CSS |
+### Prefixos de Time
+- `[TR]` - Terroristas
+- `[CT]` - Contra-Terroristas
+
+**Importante:** Em partidas `with teams`, todos os jogadores **devem** ter um prefixo de time. O sistema valida isso e retorna erro se algum jogador não tiver o prefixo.
+
+### Sistema de Pontuação
+
+No modo times, o ranking é baseado em **Score**, não apenas em kills:
+
+| Evento | Pontos |
+|--------|--------|
+| Kill em inimigo | +1 |
+| Friendly Fire (matar teammate) | -1 |
+
+**Fórmula:** `Score = Frags - Friendly Kills`
+
+### Colunas no Modo Times
+
+| Coluna | Descrição |
+|--------|-----------|
+| Team | TR ou CT |
+| Score | Pontuação líquida (Frags - FF) |
+| Kills | Kills em inimigos |
+| FF | Friendly Fire (kills em teammates) |
+| Deaths | Total de mortes |
+| K/D | Kills / Deaths |
+
+### Friendly Fire
+
+Quando um jogador mata alguém do **mesmo time**, isso conta como Friendly Fire:
+
+```
+[TR]Roman killed [TR]Alpha using M16  → FF! Roman perde 1 ponto
+[CT]Nick killed [TR]Mike using AK47   → OK! Nick ganha 1 ponto
+```
+
+---
 
 ## Como Executar
 
 ### Pré-requisitos
-- Node.js 18+ (recomendado: 20 LTS)
+- Node.js 18+
 - npm
 
 ### Instalação
 
 ```bash
-# Clonar o repositório
-git clone <url-do-repositorio>
-cd nomad
-
-# Instalar dependências
 npm install
 ```
 
-### Executar em desenvolvimento
+### Desenvolvimento
 
 ```bash
 npm run start:dev
@@ -72,24 +104,31 @@ npm run start:dev
 
 Acesse: http://localhost:3000
 
-### Build para produção
+### Produção
 
 ```bash
 npm run build
 npm run start:prod
 ```
 
+---
+
 ## Como Usar
 
 1. Acesse http://localhost:3000
-2. Selecione um arquivo de log (formato .txt ou .log)
-3. Ajuste a velocidade da animação (100ms - 1000ms)
-4. Clique em "Processar"
+2. Cole o log na área de texto
+3. Ajuste a velocidade da animação (50ms - 1000ms)
+4. Clique em "Process"
 5. Observe a animação do ranking em tempo real
 6. Veja os highlights ao final de cada partida
-7. Use a sidebar para navegar entre partidas anteriores
+
+> **Dica:** Clique em "Log Format Help" abaixo da área de texto para ver exemplos do formato aceito.
+
+---
 
 ## Formato do Log
+
+### Modo Padrão (Sem Times)
 
 ```
 23/04/2019 15:34:22 - New match 11348965 has started
@@ -98,50 +137,80 @@ npm run start:prod
 23/04/2019 15:39:22 - Match 11348965 has ended
 ```
 
-## API Endpoints
+### Modo Times
 
-| Método | Rota | Descrição |
-|--------|------|-----------|
-| GET | `/` | Página principal |
-| POST | `/api/upload` | Upload de arquivo de log |
-| GET | `/api/matches` | Lista todas as partidas |
-| GET | `/api/matches/:id` | Detalhes de uma partida |
-| GET | `/api/ranking/global` | Ranking global |
+```
+23/04/2019 15:34:22 - New match 11348965 has started with teams
+23/04/2019 15:36:04 - [TR]Roman killed [CT]Nick using M16
+23/04/2019 15:36:33 - [TR]Roman killed [TR]Alpha using M16
+23/04/2019 15:37:10 - <WORLD> killed [CT]Mike by DROWN
+23/04/2019 15:39:22 - Match 11348965 has ended with teams
+```
+
+---
+
+## Validações
+
+O sistema valida:
+
+1. **Formato** - Todas as linhas devem seguir o padrão esperado
+2. **Integridade** - Toda partida iniciada deve ter um fim correspondente
+3. **Times** - Em partidas `with teams`, todos os jogadores devem ter prefixo `[TR]` ou `[CT]`
+
+---
+
+## Highlights
+
+| Award | Critério |
+|-------|----------|
+| Winner | Maior frags/score |
+| Favorite Weapon | Arma mais usada pelo vencedor |
+| Best Streak | Maior sequência de kills sem morrer |
+| Flawless Victory | Vencedor com 0 mortes |
+| Frenzy Award | 5+ kills em 1 minuto |
+
+---
+
+## Arquitetura
+
+O projeto segue Clean Architecture:
+
+```
+src/
+├── core/
+│   ├── entities/         # Entidades de domínio
+│   └── use-cases/        # Casos de uso
+├── infra/
+│   ├── database/         # Repositório em memória
+│   └── parsers/          # Parser de logs
+└── modules/
+    └── websocket/        # Gateway WebSocket
+```
+
+## Stack
+
+| Camada | Tecnologia |
+|--------|------------|
+| Backend | NestJS + TypeScript |
+| Real-time | Socket.io |
+| Frontend | Vanilla JS + CSS |
+| Template | Handlebars |
+
+---
 
 ## WebSocket Events
 
-### Cliente -> Servidor
-- `processLog`: Envia conteúdo do log para processamento com animação
+### Cliente → Servidor
+- `processLog` - Processa o log `{ content: string, delay?: number }`
+- `skipToResults` - Pula animação
 
-### Servidor -> Cliente
-- `rankingUpdate`: Atualização do ranking a cada kill
-- `matchComplete`: Partida finalizada com highlights
-- `processingComplete`: Processamento concluído
+### Servidor → Cliente
+- `rankingUpdate` - Atualização do ranking
+- `matchComplete` - Partida finalizada
+- `processingComplete` - Processamento concluído
+- `processingError` - Erro de validação
 
-## Deploy no Railway
-
-1. Crie uma conta no [Railway](https://railway.app)
-2. Conecte seu repositório GitHub
-3. O Railway detectará automaticamente o NestJS
-4. Configure as variáveis de ambiente:
-   ```
-   PORT=3000
-   NODE_ENV=production
-   ```
-5. Deploy!
-
-## Decisões de Design
-
-1. **Clean Architecture**: Separação clara entre domínio, infraestrutura e aplicação
-2. **Use Cases**: Cada operação é um caso de uso independente
-3. **Entities imutáveis**: KillEvent é imutável, Match e Player encapsulam lógica
-4. **WebSocket para animação**: Permite feedback visual em tempo real
-5. **SQLite**: Banco simples, sem necessidade de setup externo
-
-## Features Pendentes
-
-1. Sistema de times com friendly fire
-2. Decidir escopo do ranking global (só do arquivo vs todas as partidas)
+---
 
 ## Licença
 

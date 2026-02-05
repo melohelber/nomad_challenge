@@ -2,8 +2,8 @@ import { Injectable } from '@nestjs/common';
 import { Match, KillEvent } from '../../core/entities';
 
 export type LogEvent =
-  | { type: 'match_start'; matchId: string; timestamp: Date }
-  | { type: 'match_end'; matchId: string; timestamp: Date }
+  | { type: 'match_start'; matchId: string; timestamp: Date; hasTeams: boolean }
+  | { type: 'match_end'; matchId: string; timestamp: Date; hasTeams: boolean }
   | { type: 'kill'; event: KillEvent };
 
 @Injectable()
@@ -11,8 +11,14 @@ export class LogParserService {
   private readonly MATCH_START_REGEX =
     /^(\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}) - New match (\d+) has started$/;
 
+  private readonly MATCH_START_TEAMS_REGEX =
+    /^(\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}) - New match (\d+) has started with teams$/;
+
   private readonly MATCH_END_REGEX =
     /^(\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}) - Match (\d+) has ended$/;
+
+  private readonly MATCH_END_TEAMS_REGEX =
+    /^(\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}) - Match (\d+) has ended with teams$/;
 
   private readonly PLAYER_KILL_REGEX =
     /^(\d{2}\/\d{2}\/\d{4} \d{2}:\d{2}:\d{2}) - (.+) killed (.+) using (.+)$/;
@@ -31,7 +37,7 @@ export class LogParserService {
 
       switch (event.type) {
         case 'match_start':
-          currentMatch = new Match(event.matchId, event.timestamp);
+          currentMatch = new Match(event.matchId, event.timestamp, event.hasTeams);
           break;
 
         case 'match_end':
@@ -74,7 +80,7 @@ export class LogParserService {
 
       switch (event.type) {
         case 'match_start':
-          currentMatch = new Match(event.matchId, event.timestamp);
+          currentMatch = new Match(event.matchId, event.timestamp, event.hasTeams);
           break;
 
         case 'match_end':
@@ -130,17 +136,17 @@ export class LogParserService {
 
     const eventPart = match[3];
 
-    const isMatchStart = /^New match \d+ has started$/.test(eventPart);
-    const isMatchEnd = /^Match \d+ has ended$/.test(eventPart);
+    const isMatchStart = /^New match \d+ has started( with teams)?$/.test(eventPart);
+    const isMatchEnd = /^Match \d+ has ended( with teams)?$/.test(eventPart);
     const isPlayerKill = /^.+ killed .+ using .+$/.test(eventPart);
     const isWorldKill = /^<WORLD> killed .+ by .+$/.test(eventPart);
 
     if (!isMatchStart && !isMatchEnd && !isPlayerKill && !isWorldKill) {
       if (/start/i.test(eventPart)) {
-        return 'Invalid match start. Expected: "New match [ID] has started"';
+        return 'Invalid match start. Expected: "New match [ID] has started" or "New match [ID] has started with teams"';
       }
       if (/end/i.test(eventPart)) {
-        return 'Invalid match end. Expected: "Match [ID] has ended"';
+        return 'Invalid match end. Expected: "Match [ID] has ended" or "Match [ID] has ended with teams"';
       }
       if (/kill/i.test(eventPart)) {
         return 'Invalid kill event. Expected: "[Player] killed [Player] using [Weapon]" or "<WORLD> killed [Player] by [Cause]"';
@@ -154,12 +160,34 @@ export class LogParserService {
   private parseLine(line: string): LogEvent | null {
     const trimmedLine = line.trim();
 
+    // Check teams format first (more specific)
+    const matchStartTeams = trimmedLine.match(this.MATCH_START_TEAMS_REGEX);
+    if (matchStartTeams) {
+      return {
+        type: 'match_start',
+        matchId: matchStartTeams[2],
+        timestamp: this.parseTimestamp(matchStartTeams[1]),
+        hasTeams: true,
+      };
+    }
+
     const matchStart = trimmedLine.match(this.MATCH_START_REGEX);
     if (matchStart) {
       return {
         type: 'match_start',
         matchId: matchStart[2],
         timestamp: this.parseTimestamp(matchStart[1]),
+        hasTeams: false,
+      };
+    }
+
+    const matchEndTeams = trimmedLine.match(this.MATCH_END_TEAMS_REGEX);
+    if (matchEndTeams) {
+      return {
+        type: 'match_end',
+        matchId: matchEndTeams[2],
+        timestamp: this.parseTimestamp(matchEndTeams[1]),
+        hasTeams: true,
       };
     }
 
@@ -169,6 +197,7 @@ export class LogParserService {
         type: 'match_end',
         matchId: matchEnd[2],
         timestamp: this.parseTimestamp(matchEnd[1]),
+        hasTeams: false,
       };
     }
 

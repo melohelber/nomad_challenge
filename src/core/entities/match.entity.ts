@@ -5,21 +5,31 @@ export class Match {
   public players: Map<string, Player> = new Map();
   public killEvents: KillEvent[] = [];
   public endedAt: Date | null = null;
+  public hasTeams: boolean = false;
 
   constructor(
     public readonly id: string,
     public readonly startedAt: Date,
-  ) {}
+    hasTeams: boolean = false,
+  ) {
+    this.hasTeams = hasTeams;
+  }
 
   addKillEvent(event: KillEvent): void {
     this.killEvents.push(event);
 
     if (!event.isWorldKill) {
       const killer = this.getOrCreatePlayer(event.killerName);
-      killer.addKill(event.weapon, event.timestamp);
+      if (event.killerTeam) {
+        killer.team = event.killerTeam;
+      }
+      killer.addKill(event.weapon, event.timestamp, event.isFriendlyFire);
     }
 
     const victim = this.getOrCreatePlayer(event.victimName);
+    if (event.victimTeam) {
+      victim.team = event.victimTeam;
+    }
     victim.addDeath();
   }
 
@@ -36,7 +46,13 @@ export class Match {
 
   getRanking(): Player[] {
     return Array.from(this.players.values()).sort((a, b) => {
-      if (b.frags !== a.frags) return b.frags - a.frags;
+      if (this.hasTeams) {
+        const scoreA = a.getScore();
+        const scoreB = b.getScore();
+        if (scoreB !== scoreA) return scoreB - scoreA;
+      } else {
+        if (b.frags !== a.frags) return b.frags - a.frags;
+      }
       return a.deaths - b.deaths;
     });
   }
