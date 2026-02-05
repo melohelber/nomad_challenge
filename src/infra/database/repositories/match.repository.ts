@@ -6,7 +6,7 @@ import {
   MatchPlayerDbEntity,
   KillEventDbEntity,
 } from '../entities';
-import { Match, Player } from '../../../core/entities';
+import { Match } from '../../../core/entities';
 
 @Injectable()
 export class MatchRepository {
@@ -23,39 +23,38 @@ export class MatchRepository {
     const winner = match.getWinner();
     const favoriteWeapon = winner?.getFavoriteWeapon();
 
-    const matchEntity = this.matchRepo.create({
-      id: match.id,
-      startedAt: match.startedAt,
-      endedAt: match.endedAt,
-      winnerName: winner?.name || null,
-      winnerWeapon: favoriteWeapon?.weapon || null,
-    });
+    const matchEntity = new MatchDbEntity();
+    matchEntity.id = match.id;
+    matchEntity.startedAt = match.startedAt;
+    matchEntity.endedAt = match.endedAt;
+    matchEntity.winnerName = winner?.name || null;
+    matchEntity.winnerWeapon = favoriteWeapon?.weapon || null;
 
     await this.matchRepo.save(matchEntity);
 
     for (const player of match.players.values()) {
-      const playerEntity = this.playerRepo.create({
-        matchId: match.id,
-        playerName: player.name,
-        frags: player.frags,
-        deaths: player.deaths,
-        maxStreak: player.maxStreak,
-        hasFlawlessAward: player === winner && player.hasFlawlessVictory(),
-        hasFrenzyAward: player.hasFrenzyAward(),
-        weaponKills: Object.fromEntries(player.weaponKills),
-      });
+      const playerEntity = new MatchPlayerDbEntity();
+      playerEntity.matchId = match.id;
+      playerEntity.playerName = player.name;
+      playerEntity.frags = player.frags;
+      playerEntity.deaths = player.deaths;
+      playerEntity.maxStreak = player.maxStreak;
+      playerEntity.hasFlawlessAward = player === winner && player.hasFlawlessVictory();
+      playerEntity.hasFrenzyAward = player.hasFrenzyAward();
+      playerEntity.weaponKills = Object.fromEntries(player.weaponKills);
+
       await this.playerRepo.save(playerEntity);
     }
 
     for (const event of match.killEvents) {
-      const eventEntity = this.killEventRepo.create({
-        matchId: match.id,
-        timestamp: event.timestamp,
-        killerName: event.killerName,
-        victimName: event.victimName,
-        weapon: event.weapon,
-        isWorldKill: event.isWorldKill,
-      });
+      const eventEntity = new KillEventDbEntity();
+      eventEntity.matchId = match.id;
+      eventEntity.timestamp = event.timestamp;
+      eventEntity.killerName = event.killerName;
+      eventEntity.victimName = event.victimName;
+      eventEntity.weapon = event.weapon;
+      eventEntity.isWorldKill = event.isWorldKill;
+
       await this.killEventRepo.save(eventEntity);
     }
 

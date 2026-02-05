@@ -17,13 +17,13 @@ export class MatchDbEntity {
   startedAt: Date;
 
   @Column({ nullable: true })
-  endedAt: Date;
+  endedAt: Date | null;
 
   @Column({ nullable: true })
-  winnerName: string;
+  winnerName: string | null;
 
   @Column({ nullable: true })
-  winnerWeapon: string;
+  winnerWeapon: string | null;
 
   @CreateDateColumn()
   createdAt: Date;
