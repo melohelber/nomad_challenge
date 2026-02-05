@@ -4,52 +4,83 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>FPS Match Analyzer</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="/css/style.css">
 </head>
 <body>
   <div class="container">
     <aside class="sidebar">
-      <h2>History</h2>
-      <p class="history-hint">Uploaded log files will appear here</p>
-      <div id="matchHistory" class="match-history">
+      <div class="sidebar-header">
+        <div class="logo-icon">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="28" height="28">
+            <circle cx="12" cy="12" r="10"/>
+            <circle cx="12" cy="12" r="3"/>
+            <line x1="12" y1="2" x2="12" y2="6"/>
+            <line x1="12" y1="18" x2="12" y2="22"/>
+            <line x1="2" y1="12" x2="6" y2="12"/>
+            <line x1="18" y1="12" x2="22" y2="12"/>
+          </svg>
+        </div>
+        <h2>History</h2>
       </div>
+      <p class="history-hint">Processed logs appear here</p>
+      <div id="matchHistory" class="match-history"></div>
     </aside>
 
     <main class="main-content">
       <header class="header">
+        <div class="header-decoration"></div>
         <h1>FPS MATCH ANALYZER</h1>
+        <p class="header-subtitle">Upload your match logs and watch the action unfold</p>
       </header>
 
       <section class="upload-section">
         <div class="input-box">
-          <label for="logContent" class="input-label">Paste your log content below:</label>
-          <textarea id="logContent" class="log-textarea" placeholder="23/04/2019 15:34:22 - New match 11348965 has started
+          <div class="input-header">
+            <span class="input-icon">📋</span>
+            <label for="logContent" class="input-label">Paste your log content</label>
+          </div>
+          <textarea id="logContent" class="log-textarea" spellcheck="false" placeholder="23/04/2019 15:34:22 - New match 11348965 has started
 23/04/2019 15:36:04 - Roman killed Nick using M16
 23/04/2019 15:36:33 - <WORLD> killed Nick by DROWN
 23/04/2019 15:39:22 - Match 11348965 has ended"></textarea>
           <div class="input-controls">
             <div class="speed-control">
+              <span class="speed-icon">⚡</span>
               <label for="animationDelay">Speed:</label>
               <input type="range" id="animationDelay" min="50" max="1000" value="300" />
               <span id="delayValue">300ms</span>
             </div>
             <div class="action-buttons">
-              <button id="clearBtn" class="btn-clear">Clear</button>
-              <button id="processBtn" class="btn-process">Process</button>
+              <button id="clearBtn" class="btn btn-secondary">Clear</button>
+              <button id="processBtn" class="btn btn-primary">
+                <span class="btn-icon">▶</span>
+                Process
+              </button>
             </div>
           </div>
         </div>
+
         <div id="errorMessage" class="error-message hidden"></div>
+
         <div id="progressBar" class="progress-bar hidden">
           <div class="progress-fill"></div>
           <span class="progress-text">0%</span>
         </div>
-        <button id="skipBtn" class="btn-skip hidden">Skip to Results</button>
+
+        <button id="skipBtn" class="btn btn-skip hidden">
+          <span>⏭</span> Skip to Results
+        </button>
       </section>
 
       <section class="live-section hidden" id="liveSection">
         <div class="section-header">
-          <h2>LIVE</h2>
+          <div class="live-indicator">
+            <span class="live-dot"></span>
+            LIVE
+          </div>
           <span id="currentMatchId" class="match-badge"></span>
         </div>
         <div id="lastEvent" class="last-event hidden"></div>
@@ -63,14 +94,12 @@
               <th>K/D</th>
             </tr>
           </thead>
-          <tbody id="liveRankingBody">
-          </tbody>
+          <tbody id="liveRankingBody"></tbody>
         </table>
       </section>
 
       <section class="results-section hidden" id="resultsSection">
-        <div id="matchResultsList" class="match-results-list">
-        </div>
+        <div id="matchResultsList" class="match-results-list"></div>
       </section>
     </main>
   </div>

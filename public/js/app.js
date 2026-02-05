@@ -1,5 +1,7 @@
 const socket = io();
 
+const TOP_COUNT = 5;
+
 const elements = {
   logContent: document.getElementById('logContent'),
   processBtn: document.getElementById('processBtn'),
@@ -42,8 +44,7 @@ function showError(message) {
 
 elements.skipBtn.addEventListener('click', () => {
   elements.skipBtn.disabled = true;
-  elements.skipBtn.textContent = 'Skipping...';
-  elements.progressText.textContent = 'Skipping...';
+  elements.skipBtn.innerHTML = '<span>⏳</span> Skipping...';
   socket.emit('skipToResults');
 });
 
@@ -63,12 +64,14 @@ elements.processBtn.addEventListener('click', () => {
   elements.logContent.disabled = true;
   elements.skipBtn.classList.remove('hidden');
   elements.skipBtn.disabled = false;
-  elements.skipBtn.textContent = 'Skip to Results';
+  elements.skipBtn.innerHTML = '<span>⏭</span> Skip to Results';
   elements.progressBar.classList.remove('hidden');
   elements.liveSection.classList.remove('hidden');
   elements.resultsSection.classList.add('hidden');
   elements.matchResultsList.innerHTML = '';
   elements.liveRankingBody.innerHTML = '';
+  elements.lastEvent.classList.add('hidden');
+  elements.lastEvent.innerHTML = '';
   previousRanking = [];
   completedMatches = [];
 
@@ -77,15 +80,19 @@ elements.processBtn.addEventListener('click', () => {
 
 socket.on('rankingUpdate', (data) => {
   updateProgress(data.eventNumber, data.totalEvents);
-  elements.currentMatchId.textContent = `Match ${data.matchId}`;
+  elements.currentMatchId.textContent = `Match #${data.matchId}`;
 
   if (data.lastEvent.type === 'match_start') {
     previousRanking = [];
     elements.lastEvent.classList.add('hidden');
+    elements.lastEvent.innerHTML = '';
     return;
   }
 
-  updateLastEvent(data.lastEvent);
+  if (data.lastEvent.type === 'kill') {
+    showLastEvent(data.lastEvent);
+  }
+
   animateLiveRanking(data.ranking);
 });
 
@@ -101,28 +108,30 @@ socket.on('processingError', (data) => {
   elements.progressBar.classList.add('hidden');
   elements.liveSection.classList.add('hidden');
   elements.progressFill.style.width = '0%';
+  if (elements.progressText) elements.progressText.textContent = '0%';
   showError(data.message || 'Invalid log format. Please check your input.');
 });
 
-socket.on('processingComplete', (data) => {
+socket.on('processingComplete', () => {
   elements.processBtn.disabled = false;
   elements.clearBtn.disabled = false;
   elements.logContent.disabled = false;
   elements.skipBtn.classList.add('hidden');
   elements.skipBtn.disabled = true;
-  elements.skipBtn.textContent = 'Skip to Results';
+  elements.skipBtn.innerHTML = '<span>⏭</span> Skip to Results';
   elements.progressFill.style.width = '100%';
-  elements.progressText.textContent = 'Done!';
+  if (elements.progressText) elements.progressText.textContent = '100%';
 
   setTimeout(() => {
     elements.progressBar.classList.add('hidden');
     elements.progressFill.style.width = '0%';
+    if (elements.progressText) elements.progressText.textContent = '0%';
     elements.liveSection.classList.add('hidden');
 
     if (completedMatches.length > 0) {
       const entry = {
         id: Date.now(),
-        name: `Log Entry #${entryCounter++}`,
+        name: `Entry #${entryCounter++}`,
         matches: [...completedMatches],
         timestamp: new Date().toLocaleString(),
       };
@@ -131,32 +140,31 @@ socket.on('processingComplete', (data) => {
     }
 
     displayAllMatchResults();
-  }, 1000);
+  }, 800);
 });
 
 function updateProgress(current, total) {
   const percent = Math.round((current / total) * 100);
   elements.progressFill.style.width = `${percent}%`;
-  elements.progressText.textContent = `${percent}%`;
+  if (elements.progressText) elements.progressText.textContent = `${percent}%`;
 }
 
-function updateLastEvent(event) {
-  if (event.type === 'match_start') {
-    elements.lastEvent.classList.add('hidden');
-    return;
-  }
-
+function showLastEvent(event) {
   elements.lastEvent.classList.remove('hidden');
 
   if (event.isWorldKill) {
-    elements.lastEvent.classList.add('world-kill');
     elements.lastEvent.innerHTML = `
-      <strong>WORLD</strong> killed <strong>${event.victim}</strong>
+      <span class="event-world">☠ WORLD</span>
+      <span class="event-action">killed</span>
+      <span class="event-victim">${event.victim}</span>
+      <span class="event-weapon">by ${event.weapon}</span>
     `;
   } else {
-    elements.lastEvent.classList.remove('world-kill');
     elements.lastEvent.innerHTML = `
-      <strong>${event.killer}</strong> killed <strong>${event.victim}</strong> using <strong>${event.weapon}</strong>
+      <span class="event-killer">${event.killer}</span>
+      <span class="event-action">fragged</span>
+      <span class="event-victim">${event.victim}</span>
+      <span class="event-weapon">with ${event.weapon}</span>
     `;
   }
 }
@@ -201,14 +209,197 @@ function displayAllMatchResults() {
 
   elements.resultsSection.classList.remove('hidden');
 
-  const globalRanking = calculateGlobalRanking();
-  let html = createGlobalRankingCard(globalRanking);
+  let html = '';
 
+  // Global Ranking Card at the top
+  html += createGlobalRankingCard();
+
+  // Individual Match Cards below
   completedMatches.forEach((match, index) => {
     html += createMatchResultCard(match, index + 1);
   });
 
   elements.matchResultsList.innerHTML = html;
+
+  // Setup accordion toggle listeners
+  setupAccordionListeners();
+}
+
+function createGlobalRankingCard() {
+  const globalRanking = calculateGlobalRanking();
+  const ranking = globalRanking.ranking;
+  const hasMorePlayers = ranking.length > TOP_COUNT;
+
+  let topRows = '';
+  let hiddenRows = '';
+
+  ranking.forEach((player, index) => {
+    const row = `
+      <tr class="${index === 0 ? 'winner' : ''}">
+        <td class="position">${index + 1}</td>
+        <td class="player-name">${player.name}</td>
+        <td class="frags">${player.frags}</td>
+        <td class="deaths">${player.deaths}</td>
+        <td class="kd">${player.kd.toFixed(2)}</td>
+        <td class="wins">${player.wins}</td>
+      </tr>
+    `;
+
+    if (index < TOP_COUNT) {
+      topRows += row;
+    } else {
+      hiddenRows += row;
+    }
+  });
+
+  const accordionContent = hasMorePlayers ? `
+    <tbody class="accordion-hidden" id="globalAccordionHidden">
+      ${hiddenRows}
+    </tbody>
+  ` : '';
+
+  const accordionButton = hasMorePlayers ? `
+    <button class="accordion-toggle" data-target="globalAccordionHidden">
+      <span class="accordion-icon">▼</span>
+      <span class="accordion-text">Show ${ranking.length - TOP_COUNT} more players</span>
+    </button>
+  ` : '';
+
+  return `
+    <div class="result-card global-ranking-card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-icon">🏆</span>
+          <span>Global Ranking</span>
+        </div>
+        <span class="card-badge">${globalRanking.totalMatches} match${globalRanking.totalMatches > 1 ? 'es' : ''}</span>
+      </div>
+
+      <div class="stats-row">
+        <div class="stat-box">
+          <span class="stat-value">${globalRanking.totalKills}</span>
+          <span class="stat-label">Total Kills</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-value">${globalRanking.totalPlayers}</span>
+          <span class="stat-label">Players</span>
+        </div>
+        <div class="stat-box">
+          <span class="stat-value">${globalRanking.totalMatches}</span>
+          <span class="stat-label">Matches</span>
+        </div>
+      </div>
+
+      <table class="ranking-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Frags</th>
+            <th>Deaths</th>
+            <th>K/D</th>
+            <th>Wins</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${topRows}
+        </tbody>
+        ${accordionContent}
+      </table>
+
+      ${accordionButton}
+    </div>
+  `;
+}
+
+function createMatchResultCard(match, matchNumber) {
+  const ranking = match.ranking.ranking;
+  const highlights = match.highlights;
+
+  let rankingRows = '';
+  ranking.forEach((player) => {
+    rankingRows += `
+      <tr class="${player.isWinner ? 'winner' : ''}">
+        <td class="position">${player.position}</td>
+        <td class="player-name">${player.name}</td>
+        <td class="frags">${player.frags}</td>
+        <td class="deaths">${player.deaths}</td>
+        <td class="kd">${player.kd.toFixed(2)}</td>
+      </tr>
+    `;
+  });
+
+  let highlightsHtml = '';
+  if (highlights && highlights.length > 0) {
+    const items = highlights.map(h => {
+      return `<li class="highlight-item"><strong>${h.title}:</strong> ${h.description}</li>`;
+    }).join('');
+    highlightsHtml = `
+      <div class="highlights-section">
+        <div class="highlights-title">
+          <span class="highlights-icon">⭐</span>
+          Notable Events
+        </div>
+        <ul class="highlights-list">${items}</ul>
+      </div>
+    `;
+  }
+
+  return `
+    <div class="result-card match-card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="card-icon">🎯</span>
+          <span>Match ${matchNumber}</span>
+        </div>
+        <span class="card-badge match-id">#${match.matchId}</span>
+      </div>
+
+      <table class="ranking-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Player</th>
+            <th>Frags</th>
+            <th>Deaths</th>
+            <th>K/D</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rankingRows}
+        </tbody>
+      </table>
+
+      ${highlightsHtml}
+    </div>
+  `;
+}
+
+function setupAccordionListeners() {
+  document.querySelectorAll('.accordion-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const targetId = btn.dataset.target;
+      const target = document.getElementById(targetId);
+
+      if (target) {
+        const isExpanded = target.classList.contains('expanded');
+        target.classList.toggle('expanded');
+        btn.classList.toggle('expanded');
+
+        const textSpan = btn.querySelector('.accordion-text');
+        const iconSpan = btn.querySelector('.accordion-icon');
+
+        if (isExpanded) {
+          const count = target.querySelectorAll('tr').length;
+          textSpan.textContent = `Show ${count} more players`;
+          iconSpan.textContent = '▼';
+        } else {
+          textSpan.textContent = 'Show less';
+          iconSpan.textContent = '▲';
+        }
+      }
+    });
+  });
 }
 
 function calculateGlobalRanking() {
@@ -261,179 +452,28 @@ function calculateGlobalRanking() {
   };
 }
 
-function createGlobalRankingCard(data) {
-  const TOP_COUNT = 5;
-  const hasMore = data.ranking.length > TOP_COUNT;
-
-  let topRows = '';
-  let extraRows = '';
-
-  data.ranking.forEach((player, index) => {
-    const isWinner = index === 0;
-    const row = `
-      <tr class="${isWinner ? 'winner' : ''}">
-        <td class="position">${index + 1}</td>
-        <td class="player-name">${player.name}</td>
-        <td class="frags">${player.frags}</td>
-        <td class="deaths">${player.deaths}</td>
-        <td class="kd">${player.kd.toFixed(2)}</td>
-        <td class="wins">${player.wins}</td>
-      </tr>
-    `;
-
-    if (index < TOP_COUNT) {
-      topRows += row;
-    } else {
-      extraRows += row;
-    }
-  });
-
-  return `
-    <div class="global-ranking-card">
-      <div class="card-header">
-        <h2>Global Ranking</h2>
-        <span class="match-badge">${data.totalMatches} match${data.totalMatches > 1 ? 'es' : ''}</span>
-      </div>
-
-      <div class="global-stats">
-        <div class="stat-item">
-          <span class="stat-value">${data.totalKills}</span>
-          <span class="stat-label">Total Kills</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">${data.totalPlayers}</span>
-          <span class="stat-label">Players</span>
-        </div>
-        <div class="stat-item">
-          <span class="stat-value">${data.totalMatches}</span>
-          <span class="stat-label">Matches</span>
-        </div>
-      </div>
-
-      <table class="ranking-table">
-        <thead>
-          <tr>
-            <th>#</th>
-            <th>Player</th>
-            <th>Frags</th>
-            <th>Deaths</th>
-            <th>K/D</th>
-            <th>Wins</th>
-          </tr>
-        </thead>
-        <tbody id="globalRankingTop">
-          ${topRows}
-        </tbody>
-        ${hasMore ? `
-          <tbody id="globalRankingExtra" class="hidden">
-            ${extraRows}
-          </tbody>
-        ` : ''}
-      </table>
-
-      ${hasMore ? `
-        <button class="btn-accordion" onclick="toggleGlobalRanking()">
-          <span id="accordionText">Show all ${data.ranking.length} players</span>
-          <span id="accordionIcon">▼</span>
-        </button>
-      ` : ''}
-    </div>
-  `;
-}
-
-function toggleGlobalRanking() {
-  const extra = document.getElementById('globalRankingExtra');
-  const text = document.getElementById('accordionText');
-  const icon = document.getElementById('accordionIcon');
-
-  if (extra.classList.contains('hidden')) {
-    extra.classList.remove('hidden');
-    text.textContent = 'Show less';
-    icon.textContent = '▲';
-  } else {
-    extra.classList.add('hidden');
-    const totalPlayers = document.querySelectorAll('#globalRankingTop tr, #globalRankingExtra tr').length;
-    text.textContent = `Show all ${totalPlayers} players`;
-    icon.textContent = '▼';
-  }
-}
-
-function createMatchResultCard(match, matchNumber) {
-  const ranking = match.ranking.ranking;
-  const highlights = match.highlights;
-
-  let rankingRows = '';
-  ranking.forEach((player) => {
-    rankingRows += `
-      <tr class="${player.isWinner ? 'winner' : ''}">
-        <td class="position">${player.position}</td>
-        <td class="player-name">${player.name}</td>
-        <td class="frags">${player.frags}</td>
-        <td class="deaths">${player.deaths}</td>
-        <td class="kd">${player.kd.toFixed(2)}</td>
-      </tr>
-    `;
-  });
-
-  let highlightsHtml = '';
-  if (highlights && highlights.length > 0) {
-    highlights.forEach((h) => {
-      highlightsHtml += `
-        <div class="highlight-item-small">
-          <span class="highlight-icon">${h.icon}</span>
-          <span class="highlight-text"><strong>${h.title}:</strong> ${h.description}</span>
-        </div>
-      `;
-    });
-  } else {
-    highlightsHtml = '<p class="no-highlights">No highlights</p>';
-  }
-
-  return `
-    <div class="match-result-card">
-      <div class="match-card-header">
-        <h3>Match ${match.matchId}</h3>
-        <span class="match-number">#${matchNumber}</span>
-      </div>
-
-      <div class="match-card-content">
-        <div class="ranking-section-small">
-          <h4>Ranking</h4>
-          <table class="ranking-table-small">
-            <thead>
-              <tr>
-                <th>#</th>
-                <th>Player</th>
-                <th>Frags</th>
-                <th>Deaths</th>
-                <th>K/D</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rankingRows}
-            </tbody>
-          </table>
-        </div>
-
-        <div class="highlights-section-small">
-          <h4>Highlights</h4>
-          ${highlightsHtml}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
 function addLogEntryToHistory(entry) {
   const matchCount = entry.matches.length;
+
+  const hintEl = document.querySelector('.history-hint');
+  if (hintEl) hintEl.classList.add('hidden');
+
   const entryItem = document.createElement('div');
-  entryItem.className = 'match-item';
+  entryItem.className = 'history-item';
   entryItem.dataset.entryId = entry.id;
   entryItem.innerHTML = `
-    <span class="match-id">${entry.name}</span>
-    <span class="match-winner">${matchCount} match${matchCount > 1 ? 'es' : ''}</span>
+    <div class="history-item-icon">📄</div>
+    <div class="history-item-info">
+      <span class="history-item-name">${entry.name}</span>
+      <span class="history-item-meta">${matchCount} match${matchCount > 1 ? 'es' : ''}</span>
+    </div>
   `;
-  entryItem.addEventListener('click', () => loadLogEntry(entry.id));
+  entryItem.addEventListener('click', () => {
+    loadLogEntry(entry.id);
+    // Highlight active entry
+    document.querySelectorAll('.history-item').forEach(el => el.classList.remove('active'));
+    entryItem.classList.add('active');
+  });
   elements.matchHistory.insertBefore(entryItem, elements.matchHistory.firstChild);
 }
 
