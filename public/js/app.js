@@ -68,9 +68,16 @@ elements.processBtn.addEventListener('click', () => {
 
   const delay = parseInt(elements.animationDelay.value);
 
+  // Disable buttons while waiting for validation, but don't show processing UI yet
   elements.processBtn.disabled = true;
   elements.clearBtn.disabled = true;
   elements.logContent.disabled = true;
+
+  socket.emit('processLog', { content, delay });
+});
+
+socket.on('validationPassed', (data) => {
+  // Only show processing UI after validation passes
   elements.skipBtn.classList.remove('hidden');
   elements.skipBtn.disabled = false;
   elements.skipBtn.innerHTML = '<span>⏭</span> Skip to Results';
@@ -84,8 +91,6 @@ elements.processBtn.addEventListener('click', () => {
   previousRanking = [];
   completedMatches = [];
   currentHasTeams = false;
-
-  socket.emit('processLog', { content, delay });
 });
 
 socket.on('rankingUpdate', (data) => {
