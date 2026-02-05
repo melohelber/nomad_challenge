@@ -199,11 +199,16 @@ function displayAllMatchResults() {
 
 function calculateGlobalRanking() {
   const playerStats = new Map();
+  let totalKills = 0;
+  let totalDeaths = 0;
 
   completedMatches.forEach((match) => {
     const ranking = match.ranking.ranking;
 
     ranking.forEach((player) => {
+      totalKills += player.frags;
+      totalDeaths += player.deaths;
+
       if (!playerStats.has(player.name)) {
         playerStats.set(player.name, { frags: 0, deaths: 0, matches: 0, wins: 0 });
       }
@@ -236,15 +241,23 @@ function calculateGlobalRanking() {
 
   return {
     totalMatches: completedMatches.length,
+    totalKills,
+    totalDeaths,
+    totalPlayers: playerStats.size,
     ranking,
   };
 }
 
 function createGlobalRankingCard(data) {
-  let rankingRows = '';
+  const TOP_COUNT = 5;
+  const hasMore = data.ranking.length > TOP_COUNT;
+
+  let topRows = '';
+  let extraRows = '';
+
   data.ranking.forEach((player, index) => {
     const isWinner = index === 0;
-    rankingRows += `
+    const row = `
       <tr class="${isWinner ? 'winner' : ''}">
         <td class="position">${index + 1}</td>
         <td class="player-name">${player.name}</td>
@@ -254,6 +267,12 @@ function createGlobalRankingCard(data) {
         <td class="wins">${player.wins}</td>
       </tr>
     `;
+
+    if (index < TOP_COUNT) {
+      topRows += row;
+    } else {
+      extraRows += row;
+    }
   });
 
   return `
@@ -262,6 +281,22 @@ function createGlobalRankingCard(data) {
         <h2>Global Ranking</h2>
         <span class="match-badge">${data.totalMatches} match${data.totalMatches > 1 ? 'es' : ''}</span>
       </div>
+
+      <div class="global-stats">
+        <div class="stat-item">
+          <span class="stat-value">${data.totalKills}</span>
+          <span class="stat-label">Total Kills</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">${data.totalPlayers}</span>
+          <span class="stat-label">Players</span>
+        </div>
+        <div class="stat-item">
+          <span class="stat-value">${data.totalMatches}</span>
+          <span class="stat-label">Matches</span>
+        </div>
+      </div>
+
       <table class="ranking-table">
         <thead>
           <tr>
@@ -273,12 +308,41 @@ function createGlobalRankingCard(data) {
             <th>Wins</th>
           </tr>
         </thead>
-        <tbody>
-          ${rankingRows}
+        <tbody id="globalRankingTop">
+          ${topRows}
         </tbody>
+        ${hasMore ? `
+          <tbody id="globalRankingExtra" class="hidden">
+            ${extraRows}
+          </tbody>
+        ` : ''}
       </table>
+
+      ${hasMore ? `
+        <button class="btn-accordion" onclick="toggleGlobalRanking()">
+          <span id="accordionText">Show all ${data.ranking.length} players</span>
+          <span id="accordionIcon">▼</span>
+        </button>
+      ` : ''}
     </div>
   `;
+}
+
+function toggleGlobalRanking() {
+  const extra = document.getElementById('globalRankingExtra');
+  const text = document.getElementById('accordionText');
+  const icon = document.getElementById('accordionIcon');
+
+  if (extra.classList.contains('hidden')) {
+    extra.classList.remove('hidden');
+    text.textContent = 'Show less';
+    icon.textContent = '▲';
+  } else {
+    extra.classList.add('hidden');
+    const totalPlayers = document.querySelectorAll('#globalRankingTop tr, #globalRankingExtra tr').length;
+    text.textContent = `Show all ${totalPlayers} players`;
+    icon.textContent = '▼';
+  }
 }
 
 function createMatchResultCard(match, matchNumber) {

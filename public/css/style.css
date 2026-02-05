@@ -534,6 +534,63 @@ body {
   font-size: 0.8rem;
 }
 
+.global-stats {
+  display: flex;
+  justify-content: center;
+  gap: 30px;
+  margin-bottom: 20px;
+  padding: 15px;
+  background: var(--bg-tertiary);
+  border-radius: 8px;
+}
+
+.global-stats .stat-item {
+  text-align: center;
+}
+
+.global-stats .stat-value {
+  display: block;
+  font-size: 1.5rem;
+  font-weight: bold;
+  color: var(--gold);
+  line-height: 1;
+}
+
+.global-stats .stat-label {
+  display: block;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  margin-top: 5px;
+}
+
+.btn-accordion {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 15px;
+  padding: 12px;
+  background: var(--bg-tertiary);
+  color: var(--text-secondary);
+  border: 1px solid var(--accent-secondary);
+  border-radius: 8px;
+  font-size: 0.85rem;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-accordion:hover {
+  background: var(--accent-secondary);
+  color: var(--text-primary);
+}
+
+.btn-accordion #accordionIcon {
+  font-size: 0.7rem;
+}
+
 .match-results-list {
   display: flex;
   flex-direction: column;
