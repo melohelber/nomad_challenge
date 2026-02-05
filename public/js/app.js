@@ -2,6 +2,13 @@ const socket = io();
 
 const TOP_COUNT = 5;
 
+// HTML escape function to prevent XSS
+function escapeHtml(text) {
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
 const elements = {
   logContent: document.getElementById('logContent'),
   processBtn: document.getElementById('processBtn'),
@@ -85,7 +92,7 @@ socket.on('rankingUpdate', (data) => {
   updateProgress(data.eventNumber, data.totalEvents);
 
   const teamsBadge = data.hasTeams ? ' <span class="teams-badge">TEAMS</span>' : '';
-  elements.currentMatchId.innerHTML = `Match #${data.matchId}${teamsBadge}`;
+  elements.currentMatchId.innerHTML = `Match #${escapeHtml(data.matchId)}${teamsBadge}`;
 
   currentHasTeams = data.hasTeams;
 
@@ -186,25 +193,25 @@ function showLastEvent(event) {
     elements.lastEvent.innerHTML = `
       <span class="event-world">☠ WORLD</span>
       <span class="event-action">killed</span>
-      <span class="event-victim">${event.victim}</span>
-      <span class="event-weapon">by ${event.weapon}</span>
+      <span class="event-victim">${escapeHtml(event.victim)}</span>
+      <span class="event-weapon">by ${escapeHtml(event.weapon)}</span>
     `;
   } else if (event.isFriendlyFire) {
     elements.lastEvent.innerHTML = `
       <span class="event-ff">⚠ FRIENDLY FIRE</span>
-      <span class="event-killer">${event.killer}</span>
+      <span class="event-killer">${escapeHtml(event.killer)}</span>
       <span class="event-action">killed teammate</span>
-      <span class="event-victim">${event.victim}</span>
-      <span class="event-weapon">with ${event.weapon}</span>
+      <span class="event-victim">${escapeHtml(event.victim)}</span>
+      <span class="event-weapon">with ${escapeHtml(event.weapon)}</span>
     `;
     elements.lastEvent.classList.add('friendly-fire');
     setTimeout(() => elements.lastEvent.classList.remove('friendly-fire'), 500);
   } else {
     elements.lastEvent.innerHTML = `
-      <span class="event-killer">${event.killer}</span>
+      <span class="event-killer">${escapeHtml(event.killer)}</span>
       <span class="event-action">fragged</span>
-      <span class="event-victim">${event.victim}</span>
-      <span class="event-weapon">with ${event.weapon}</span>
+      <span class="event-victim">${escapeHtml(event.victim)}</span>
+      <span class="event-weapon">with ${escapeHtml(event.weapon)}</span>
     `;
   }
 }
@@ -237,8 +244,8 @@ function animateLiveRanking(ranking, hasTeams) {
       html += `
         <tr class="${rowClass}">
           <td class="position">${player.position}</td>
-          <td class="team-cell"><span class="team-badge ${teamClass}">${player.team || '?'}</span></td>
-          <td class="player-name">${player.name}</td>
+          <td class="team-cell"><span class="team-badge ${teamClass}">${escapeHtml(player.team || '?')}</span></td>
+          <td class="player-name">${escapeHtml(player.name)}</td>
           <td class="score">${score}</td>
           <td class="frags">${player.frags}</td>
           <td class="ff ${ff > 0 ? 'has-ff' : ''}">${ff > 0 ? `-${ff}` : '0'}</td>
@@ -249,8 +256,8 @@ function animateLiveRanking(ranking, hasTeams) {
       html += `
         <tr class="${rowClass}">
           <td class="position">${player.position}</td>
-          <td class="player-name">${player.name}</td>
-          <td class="frags">${player.frags}</td>
+          <td class="player-name">${escapeHtml(player.name)}</td>
+          <td class="score">${player.frags}</td>
           <td class="deaths">${player.deaths}</td>
           <td class="kd">${player.kd.toFixed(2)}</td>
         </tr>
@@ -295,7 +302,7 @@ function createGlobalRankingCard() {
     const row = `
       <tr class="${index === 0 ? 'winner' : ''}">
         <td class="position">${index + 1}</td>
-        <td class="player-name">${player.name}</td>
+        <td class="player-name">${escapeHtml(player.name)}</td>
         <td class="score">${player.score}</td>
         <td class="deaths">${player.deaths}</td>
         <td class="kd">${player.kd.toFixed(2)}</td>
@@ -399,8 +406,8 @@ function createMatchResultCard(match, matchNumber) {
       rankingRows += `
         <tr class="${player.isWinner ? 'winner' : ''}">
           <td class="position">${player.position}</td>
-          <td class="team-cell"><span class="team-badge ${teamClass}">${player.team || '?'}</span></td>
-          <td class="player-name">${player.name}</td>
+          <td class="team-cell"><span class="team-badge ${teamClass}">${escapeHtml(player.team || '?')}</span></td>
+          <td class="player-name">${escapeHtml(player.name)}</td>
           <td class="score">${score}</td>
           <td class="frags">${player.frags}</td>
           <td class="ff ${ff > 0 ? 'has-ff' : ''}">${ff > 0 ? `-${ff}` : '0'}</td>
@@ -423,7 +430,7 @@ function createMatchResultCard(match, matchNumber) {
       rankingRows += `
         <tr class="${player.isWinner ? 'winner' : ''}">
           <td class="position">${player.position}</td>
-          <td class="player-name">${player.name}</td>
+          <td class="player-name">${escapeHtml(player.name)}</td>
           <td class="score">${player.frags}</td>
           <td class="deaths">${player.deaths}</td>
           <td class="kd">${player.kd.toFixed(2)}</td>
@@ -435,7 +442,7 @@ function createMatchResultCard(match, matchNumber) {
   let highlightsHtml = '';
   if (highlights && highlights.length > 0) {
     const items = highlights.map(h => {
-      return `<li class="highlight-item"><strong>${h.title}:</strong> ${h.description}</li>`;
+      return `<li class="highlight-item"><strong>${escapeHtml(h.title)}:</strong> ${escapeHtml(h.description)}</li>`;
     }).join('');
     highlightsHtml = `
       <div class="highlights-section">
@@ -458,7 +465,7 @@ function createMatchResultCard(match, matchNumber) {
           <span>Match ${matchNumber}</span>
           ${teamsBadge}
         </div>
-        <span class="card-badge match-id">#${match.matchId}</span>
+        <span class="card-badge match-id">#${escapeHtml(match.matchId)}</span>
       </div>
 
       <table class="ranking-table">
