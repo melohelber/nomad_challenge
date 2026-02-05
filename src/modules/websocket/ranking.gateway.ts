@@ -87,7 +87,6 @@ export class RankingGateway implements OnGatewayConnection, OnGatewayDisconnect 
       return;
     }
 
-    // Validation passed - tell client to show processing UI
     client.emit('validationPassed', { totalEvents: events.length });
 
     this.skipRequests.set(client.id, false);
